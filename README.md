@@ -5,6 +5,6 @@ Windows 平台下的超迷你 Web 服务端
 
 
 # 开发环境
-IDE：CLion
-编译器：MinGW-w64 6.0
-运行平台：Windows 10
+IDE：CLion<br/>
+编译器：MinGW-w64 6.0<br/>
+运行平台：Windows 10<br/>

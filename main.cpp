@@ -1,10 +1,13 @@
 #include <iostream>
 #include <string>
+#include "MiniWebServer.cpp"
 using namespace std;
 
 
-
 int main() {
-    // 启动监听端口
-    startServer("localhost", 12345);
+    MiniWebServer server;
+    server.startServer("localhost", 12345);
+
+    return 0;
 }
+

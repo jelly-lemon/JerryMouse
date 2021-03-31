@@ -1,4 +1,5 @@
-//
-// Created by zhangwei on 2021/3/30.
-//
 
+
+class HttpResponse {
+    void* handelResponse(void *args);
+};
