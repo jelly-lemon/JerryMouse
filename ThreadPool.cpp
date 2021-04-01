@@ -7,19 +7,19 @@
 using namespace std;
 
 
-
-
 /**
  * 线程池
  */
 class ThreadPool {
 private:
-    int poolSize = 30;  // 线程池大小
-    int currentSize = 0;
+    int poolSize;  // 线程池大小
+    int currentNumber;    // 现有线程数量
+    pthread_rwlock_t rwlock;    // 读写锁
 public:
-    void startThread(SOCKET &connSocket);
-    static void* handleConnection(void *args);
-
+    ThreadPool(int poolSize = 30);
+    void startThread(void*(*t_func)(void *), SOCKET &connSocket);
+    void addCurrentNumber();
+    void subCurrentNumber();
 };
 
 struct ThreadArgs {
@@ -28,44 +28,56 @@ struct ThreadArgs {
 };
 
 
+
 /**
  * 获取一个可用的线程
  *
  * 如果暂时没有可用的线程，就一直等待
  */
-void ThreadPool::startThread(SOCKET &connSocket) {
-    // 等待空位
-    while (this->currentSize >= this->poolSize) {
-        cout << this->currentSize << " ";
-        Sleep(100);
+void ThreadPool::startThread(void*(*t_func)(void *), SOCKET &connSocket) {
+    // 等待线程池空位
+    while (1) {
+        pthread_rwlock_rdlock(&rwlock); // 读加锁
+        if (this->currentNumber >= this->poolSize) {
+            pthread_rwlock_unlock(&rwlock);             // 读解锁
+            Sleep(100);
+        } else {
+            ThreadArgs args = {connSocket, this};
+            // 创建线程
+            pthread_t t;
+            pthread_create(&t, NULL, t_func, (void*)&args);
+            pthread_rwlock_unlock(&rwlock); // 读解锁
+
+            // 线程现有量加 1
+            addCurrentNumber();
+            break;
+        }
     }
-    cout << endl;
-
-    // 创建线程
-    ThreadArgs args = {connSocket, this};
-    pthread_t t;
-    pthread_create(&t, NULL, handleConnection, (void*)&args);
-
-    // 线程现有量加 1
-    this->currentSize++;
-    cout << "new Thread, currentSize=" << this->currentSize << endl;
 }
 
-void *ThreadPool::handleConnection(void *args) {
-    // 获取参数
-    ThreadArgs threadArgs = *(ThreadArgs*)args;
-    SOCKET connSocket = threadArgs.connSocket;
-    ThreadPool *_this = threadArgs.pThreadPool;
-
-    //cout << "in Thread, currentSize=" << _this->currentSize << endl;
-    Sleep(2000);
 
 
-    // 线程现有量减 1
-    _this->currentSize--;
 
-    return nullptr;
+ThreadPool::ThreadPool(int poolSize) {
+    this->poolSize = poolSize;
+    this->currentNumber = 0;
+    // 初始化读写锁
+    pthread_rwlock_init(&this->rwlock, NULL);
 }
+
+void ThreadPool::addCurrentNumber() {
+    pthread_rwlock_wrlock(&rwlock); // 写加锁
+    currentNumber++;
+    pthread_rwlock_unlock(&rwlock); // 写解锁
+}
+
+void ThreadPool::subCurrentNumber() {
+    pthread_rwlock_wrlock(&rwlock); // 写加锁
+    currentNumber--;
+    pthread_rwlock_unlock(&rwlock); // 写解锁
+}
+
+
 
 
 
