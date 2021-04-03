@@ -1,5 +1,6 @@
 #include <winsock2.h>
 #include <map>
+#include <fstream>
 #include "HttpRequest.cpp"
 using namespace std;
 
@@ -8,25 +9,26 @@ private:
     SOCKET connSocket;
     map<string, string> responseHeader;
 
+    static string rootDir;
     static void handleRequest(SOCKET &connSocket);
-    static void handleGet(HttpRequest &request);
+    void handleGet(HttpRequest &request);
     static void handlePost(HttpRequest &request);
-
     static string getRequestData(SOCKET &skt);
 
 public:
     explicit HttpResponse(SOCKET &connSocket): connSocket(connSocket) {
-
+        setRootDir("D:/0-3-CLion/MiniWebServer/root");
     }
 
-    int write(string &data);
-
-
-    void addHeader(string &key, string &value);
-
+    int write(string &data, string contentType);
+    void addHeader(string key, string value);
     string getStrHeader();
-
     void initDefaultHeader();
+
+    static string getFile(string URL);
+    static void setRootDir(string dir);
+
+    void send404Page();
 };
 
 /**
@@ -63,8 +65,17 @@ string HttpResponse::getRequestData(SOCKET &skt) {
 }
 
 
+/**
+ * 处理 get 请求
+ */
 void HttpResponse::handleGet(HttpRequest &request) {
-
+    try {
+        string data = getFile(request.getURL());
+        // TODO 提取文件类型
+        string fileType =
+    } catch (...) {
+        send404Page();
+    }
 }
 
 void HttpResponse::handlePost(HttpRequest &request) {
@@ -94,27 +105,75 @@ void HttpResponse::handleRequest(SOCKET &connSocket) {
     closesocket(connSocket);
 }
 
-int HttpResponse::write(string &data) {
+/**
+ * 向客户端发送数据
+ *
+ * @return 发送数据的字节数
+ */
+int HttpResponse::write(string &data, string contentType) {
     // 添加 body 长度信息
-    string key("Content-Length");
-    string value(to_string(data.length()));
-    addHeader(key, value);
+    addHeader("Content-Length", to_string(data.length()));
+    addHeader("Content-Type", contentType);
 
-    string sHeader = getStrHeader();
-    string sendData = sHeader + data;
+    string sendHeader = getStrHeader();
+    string sendData = sendHeader + data;
     int n = send(connSocket, &sendData[0], sendData.size(), 0);
-    return n;
+    return n - sendHeader.length();
 }
 
-void HttpResponse::addHeader(string &key, string &value) {
+/**
+ * 添加响应头
+ */
+void HttpResponse::addHeader(string key, string value) {
+    if (key == "")
+        return;
     responseHeader[key] = value;
 }
 
+/**
+ * 响应头 map 转字符串
+ */
 string HttpResponse::getStrHeader() {
+    string sendHeader;
+    map<string, string>::iterator iter;
+    for (iter = responseHeader.begin(); iter != responseHeader.end(); iter++) {
+        sendHeader += iter->first + ":" + iter->second + "\r\n";
+    }
+    sendHeader += "\r\n";
 
+    return sendHeader;
 }
 
+/**
+ * 设置默认响应头
+ */
 void HttpResponse::initDefaultHeader() {
 
 }
 
+/**
+ * 设置资源根目录
+ */
+void HttpResponse::setRootDir(string dir) {
+    rootDir = dir;
+}
+
+/**
+ * 读取文件
+ */
+string HttpResponse::getFile(string URL) {
+    string filePath = rootDir + URL;
+    ifstream file(URL, ios::in);
+    if(!file) {
+        throw invalid_argument("file not exists");
+    } else {
+        ostringstream fileContent;
+        fileContent << file.rdbuf();
+        return fileContent.str();
+    }
+}
+
+void HttpResponse::send404Page() {
+    string data = getFile("/404.html");
+    write(data, "text/html");
+}

@@ -8,3 +8,7 @@ Windows 平台下的超迷你 Web 服务端
 IDE：CLion<br/>
 编译器：MinGW-w64 6.0<br/>
 运行平台：Windows 10<br/>
+
+# 取名
+JimDog<br/>
+JerryMouse
