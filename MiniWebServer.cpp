@@ -13,8 +13,8 @@ void* t_main(void *args) {
     ThreadPool *pThreadPool = threadArgs.pThreadPool;
 
     // 对客户端请求进行响应
-    HttpResponse response(connSocket);
-    response.handleConnection();
+    HttpResponse response(connSocket, HttpRequest(__cxx11::basic_string()));
+    response.handleRequest();
 
     // 线程池现有线程数量减 1
     pThreadPool->subCurrentNumber();
