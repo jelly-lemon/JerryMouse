@@ -1,23 +1,29 @@
+#pragma once
 #include <string>
 #include <winsock2.h>
-
+#include <iostream>
 #include "ThreadPool.cpp"
+#include "HttpResponse.cpp"
 using namespace std;
 
 /**
  * 处理连接的函数
  */
 void* t_main(void *args) {
-    ThreadArgs threadArgs = *(ThreadArgs *)args;
-    SOCKET connSocket = threadArgs.connSocket;
-    ThreadPool *pThreadPool = threadArgs.pThreadPool;
+    // 解析参数
+    ThreadArgs *pThreadArgs = (ThreadArgs *)args;
+    SOCKET connSocket = pThreadArgs->connSocket;
+    ThreadPool *pThreadPool = pThreadArgs->pThreadPool;
+    delete pThreadArgs;
 
     // 对客户端请求进行响应
-    HttpResponse response(connSocket, HttpRequest(__cxx11::basic_string()));
+    HttpResponse response(connSocket);
     response.handleRequest();
 
     // 线程池现有线程数量减 1
     pThreadPool->subCurrentNumber();
+
+    return NULL;
 }
 
 
@@ -25,7 +31,10 @@ class MiniWebServer {
 private:
     ThreadPool threadPool;
 public:
-    MiniWebServer();
+    MiniWebServer(): threadPool(ThreadPool(1)) {
+        initWSA();
+    }
+
     void initWSA();
     void startServer(string ip, int port, int listenNumber);
 };
@@ -48,6 +57,8 @@ void MiniWebServer::startServer(string ip, int port, int listenNumber) {
     bind(sockSrv, (SOCKADDR*)&addrSrv, sizeof(SOCKADDR));
     listen(sockSrv, listenNumber); // 监听是否有请求，非阻塞
 
+
+    cout << "waiting for connection..." << endl;
     // 等待客户端连接
     while (1) {
         SOCKADDR_IN addrClient;
@@ -56,10 +67,6 @@ void MiniWebServer::startServer(string ip, int port, int listenNumber) {
         SOCKET connSocket = accept(sockSrv, (SOCKADDR*)&addrClient, &len);    // 没有客户端请求就会阻塞，有就接受
         threadPool.startThread(t_main, connSocket);
     }
-}
-
-MiniWebServer::MiniWebServer() {
-    initWSA();
 }
 
 /**

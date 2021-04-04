@@ -1,3 +1,4 @@
+#pragma once
 #include <map>
 #include <string>
 #include <stdexcept>
@@ -199,3 +200,4 @@ string HttpRequest::getHeader(string key) {
 string HttpRequest::getBody() {
     return requestBody;
 }
+

@@ -12,3 +12,6 @@ IDE：CLion<br/>
 # 取名
 JimDog<br/>
 JerryMouse
+
+# 思考
+Http 请求设置了 keep-alive，如果服务端持续没有收到客户端请求，那究竟服务端保持多久呢？如果不释放，就一直占着资源。

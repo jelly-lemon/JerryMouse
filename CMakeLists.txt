@@ -2,9 +2,11 @@ cmake_minimum_required(VERSION 3.15)
 project(MiniWebServer)
 
 set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_EXE_LINKER_FLAGS "-static")   # 链接库到 exe 中
 
 
 add_executable(main main.cpp)
+target_link_libraries(main wsock32.lib)
 
 message("CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
 

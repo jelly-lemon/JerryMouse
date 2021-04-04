@@ -1,8 +1,7 @@
+#pragma once
 #include <pthread.h>
 #include <winsock2.h>
 #include <windows.h>
-#include <iostream>
-#include "HttpResponse.cpp"
 
 using namespace std;
 
@@ -17,7 +16,7 @@ private:
     pthread_rwlock_t rwlock;    // 读写锁
 public:
     ThreadPool(int poolSize = 30);
-    void startThread(void*(*t_func)(void *), SOCKET &connSocket);
+    void startThread(void*(*t_func)(void *), SOCKET connSocket);
     void addCurrentNumber();
     void subCurrentNumber();
 };
@@ -34,7 +33,7 @@ struct ThreadArgs {
  *
  * 如果暂时没有可用的线程，就一直等待
  */
-void ThreadPool::startThread(void*(*t_func)(void *), SOCKET &connSocket) {
+void ThreadPool::startThread(void*(*t_func)(void *), SOCKET connSocket) {
     // 等待线程池空位
     while (1) {
         pthread_rwlock_rdlock(&rwlock); // 读加锁
@@ -42,10 +41,12 @@ void ThreadPool::startThread(void*(*t_func)(void *), SOCKET &connSocket) {
             pthread_rwlock_unlock(&rwlock);             // 读解锁
             Sleep(100);
         } else {
-            ThreadArgs args = {connSocket, this};
+            // 【难点】注意这里给线程传参，传的是地址，如果是局部变量的地址，这个函数一结束，局变就没了，
+            // 子线程拿到这个地址再去取数据，就是有问题的。
+            ThreadArgs *args = new ThreadArgs{connSocket, this};
             // 创建线程
             pthread_t t;
-            pthread_create(&t, NULL, t_func, (void*)&args);
+            pthread_create(&t, NULL, t_func, (void*)args);
             pthread_rwlock_unlock(&rwlock); // 读解锁
 
             // 线程现有量加 1

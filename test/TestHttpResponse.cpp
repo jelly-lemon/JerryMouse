@@ -5,8 +5,15 @@
 using namespace std;
 
 
-TEST(NormalValue, test_0) {
-    
+//class TestHttpResponse: public testing::Test {
+//    virtual void SetUp() {
+//        // 创建监听 socket
+//    }
+//};
+
+TEST(NormalTest, test_0) {
+    SOCKET socket1;
+    HttpResponse response(socket1);
 }
 
 
