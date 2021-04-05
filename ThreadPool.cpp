@@ -1,4 +1,6 @@
+// 本文件包含了 ThreadPool 类、传给子线程的参数结构体 ThreadArgs
 #pragma once
+
 #include <pthread.h>
 #include <winsock2.h>
 #include <windows.h>
@@ -7,7 +9,7 @@ using namespace std;
 
 
 /**
- * 线程池
+ * 对线程池封装成类
  */
 class ThreadPool {
 private:
@@ -15,17 +17,27 @@ private:
     int currentNumber;    // 现有线程数量
     pthread_rwlock_t rwlock;    // 读写锁
 public:
-    ThreadPool(int poolSize = 30);
-    void startThread(void*(*t_func)(void *), SOCKET connSocket);
+    explicit ThreadPool(int poolSize) {
+        this->poolSize = poolSize;
+        this->currentNumber = 0;
+        // 初始化读写锁
+        pthread_rwlock_init(&this->rwlock, NULL);
+    }
+
+    void startThread(void *(*t_func)(void *), SOCKET connSocket);
+
     void addCurrentNumber();
+
     void subCurrentNumber();
 };
 
+/**
+ * 对要传给子线程函数的内容封装成一个结构体
+ */
 struct ThreadArgs {
-    SOCKET connSocket;
-    ThreadPool *pThreadPool;
+    SOCKET connSocket;  // socket 连接
+    ThreadPool *pThreadPool;    // 线程池对象的地址
 };
-
 
 
 /**
@@ -33,7 +45,7 @@ struct ThreadArgs {
  *
  * 如果暂时没有可用的线程，就一直等待
  */
-void ThreadPool::startThread(void*(*t_func)(void *), SOCKET connSocket) {
+void ThreadPool::startThread(void *(*t_func)(void *), SOCKET connSocket) {
     // 等待线程池空位
     while (1) {
         pthread_rwlock_rdlock(&rwlock); // 读加锁
@@ -46,7 +58,7 @@ void ThreadPool::startThread(void*(*t_func)(void *), SOCKET connSocket) {
             ThreadArgs *args = new ThreadArgs{connSocket, this};
             // 创建线程
             pthread_t t;
-            pthread_create(&t, NULL, t_func, (void*)args);
+            pthread_create(&t, NULL, t_func, (void *) args);
             pthread_rwlock_unlock(&rwlock); // 读解锁
 
             // 线程现有量加 1
@@ -57,21 +69,18 @@ void ThreadPool::startThread(void*(*t_func)(void *), SOCKET connSocket) {
 }
 
 
-
-
-ThreadPool::ThreadPool(int poolSize) {
-    this->poolSize = poolSize;
-    this->currentNumber = 0;
-    // 初始化读写锁
-    pthread_rwlock_init(&this->rwlock, NULL);
-}
-
+/**
+ * 线程池现有数量加 1
+ */
 void ThreadPool::addCurrentNumber() {
     pthread_rwlock_wrlock(&rwlock); // 写加锁
     currentNumber++;
     pthread_rwlock_unlock(&rwlock); // 写解锁
 }
 
+/**
+ * 线程池现有数量减 1
+ */
 void ThreadPool::subCurrentNumber() {
     pthread_rwlock_wrlock(&rwlock); // 写加锁
     currentNumber--;

@@ -1,38 +1,50 @@
+// 本文件实现了 HttpRequest 类
+
 #pragma once
+
 #include <map>
 #include <string>
 #include <stdexcept>
 
 using namespace std;
 
+/**
+ * Http 请求类，把 Http 请求封装成一个类
+ */
 class HttpRequest {
 private:
-    map<string, string> requestLine;
-    map<string, string> requestHeader;
-    string requestBody;
-    string rawData;
+    map<string, string> requestLine;    // 请求行
+    map<string, string> requestHeader;  // 请求头
+    string requestBody; // 请求体
+    string rawData; // 客户端请求原始字符串，也就是服务端收到的原始字符串
 
     void parseRawData();
 
     static map<string, string> reqLineToMap(const string &reqLine);
+
     static map<string, string> reqHeaderToMap(const string &reqHeader);
 
 public:
-    HttpRequest() {
-
-    }
-
-    // 如果一个构造器是接收单个参数的，那么最好要加上 explicit
+    // 如果一个构造器是接收单个参数的，要加上 explicit
     // 如果不加的话，该构造函数还会拥有类型转换的情形，造成混淆
+    /**
+     * 构造函数
+     *
+     * @param rawData 原始字符串
+     */
     explicit HttpRequest(string &rawData) : rawData(rawData) {
         // 如果形参是引用的话，不存在参数为 NULL 的情况，即使强制传 NULL，编译器也不通过，因为类型不匹配
         parseRawData();
     }
 
     string getURL();
+
     string getMethod();
+
     string getHttpVersion();
+
     string getHeader(string key);
+
     string getBody();
 
     static bool isAllData(const string &data);
@@ -47,6 +59,7 @@ public:
  *      method = "GET"
  *      URL = "/"
  *      HttpVersion = "HTTP/1.1"
+ *
  * @param reqLine 请求行字符串
  * @return 请求 map
  */
@@ -75,8 +88,8 @@ map<string, string> HttpRequest::reqLineToMap(const string &reqLine) {
 /**
  * 请求头字符串转 map
  *
- * @param reqHeader
- * @return
+ * @param reqHeader 请求头字符串
+ * @return 请求头 map
  */
 map<string, string> HttpRequest::reqHeaderToMap(const string &reqHeader) {
     int pMiddle, pEnd, pStart;
@@ -96,7 +109,7 @@ map<string, string> HttpRequest::reqHeaderToMap(const string &reqHeader) {
             value = string(reqHeader, pMiddle + 1);
         value.erase(0, value.find_first_not_of(' '));   // 去除前面多余空格
         reqHeaderMap[key] = value;
-        pStart = pEnd + 2;  // \r\n 2 个字节
+        pStart = pEnd + 2;  // \r\n == 2 个字节
     } while (pEnd != -1);
 
     return reqHeaderMap;
@@ -104,7 +117,7 @@ map<string, string> HttpRequest::reqHeaderToMap(const string &reqHeader) {
 
 
 /**
- * 对请求字符串进行分割
+ * 对请求字符串进行解析
  */
 void HttpRequest::parseRawData() {
     int headerEndPos, pStart, pEnd;
@@ -117,7 +130,6 @@ void HttpRequest::parseRawData() {
     pEnd = rawData.find("\r\n");
     string reqLine(rawData, 0, pEnd - pStart);
     requestLine = HttpRequest::reqLineToMap(reqLine);    // 请求行转键值对
-
 
     // 提取请求头
     pStart = pEnd + 2;  // \r\n 两个字节
@@ -141,8 +153,7 @@ void HttpRequest::parseRawData() {
 /**
  * 判断数据是否收取完毕
  *
- * @param data
- * @return
+ * @param data 目前收到的数据
  */
 bool HttpRequest::isAllData(const string &data) {
     // 如果存在 \r\n\r\n，说明请求行和请求头已经发送过来了
@@ -168,21 +179,30 @@ bool HttpRequest::isAllData(const string &data) {
     return false;
 }
 
+/**
+ * 获取请求 URL，比如 /、/home
+ */
 string HttpRequest::getURL() {
     return requestLine["url"];
 }
 
+/**
+ * 获取请求方法，比如 GET、POST
+ */
 string HttpRequest::getMethod() {
     return requestLine["method"];
 }
 
+/**
+ * 获取 HTTP 版本，比如 HTTP/1.1
+ */
 string HttpRequest::getHttpVersion() {
     return requestLine["version"];
 }
 
 
 /**
- * 获取请求头 value
+ * 获取请求头 value，如果不存在则返回空串
  *
  * @param key 请求头的 key
  * @return 请求头的 value

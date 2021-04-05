@@ -1,4 +1,6 @@
+// 本文件实现了 HttpResponse 类
 #pragma once
+
 #include <winsock2.h>
 #include <map>
 #include <fstream>
@@ -9,63 +11,77 @@
 
 using namespace std;
 
+/**
+ * 对 HTTP 响应封装成类 HttpResponse
+ */
 class HttpResponse {
 private:
-    SOCKET connSocket;
-    map<string, string> responseHeader;
-    string clientIPport;
+    // 响应行
     const string OK_200 = "HTTP/1.1 200 OK\r\n";
     const string NOT_FOUND_404 = "HTTP/1.1 404 Not Found\r\n";
 
-
-    void initDefaultHeader();
+    SOCKET connSocket;  // 要响应的 socket
+    map<string, string> responseHeader; // 响应头
+    string clientIPport;    // 客户端 IP和端口
 
     void send404Page();
 
     void handleGet(HttpRequest &request);
 
-    int write(string responseLine, string data, string contentType);
+    int write(const string &responseLine, const string &responseBody, const string &contentType);
 
-    void addHeader(string key, string value);
+    void setHeader(const string &key, const string &value);
 
     string getStrHeader();
 
+    void initDefaultHeader();
+
     void handlePost(HttpRequest &request);
 
+    static string getClientIPPort(SOCKET &connSocket);
 
-
-    static string getFile(string URL);
+    static string getFile(const string &URL);
 
     static string getFileType(string url);
-    string getClientIPPort();
 
 public:
-    static string rootDir;
     explicit HttpResponse(SOCKET &connSocket) : connSocket(connSocket) {
+        initDefaultHeader();
 
+        clientIPport = getClientIPPort(connSocket);
     }
-    static string getRequestData(SOCKET &skt);
 
     void handleRequest();
+
+    string getRequestData(int recvTimeout = 3 * 1000);
+
+    static string rootDir;  // 资源所在根目录
+
+
 
 
 };
 
 /**
  * 获取客户端发送过来的原始字符串
+ *
+ * @param socket 连接 socket
+ * @param recvTimeout 读取超时返回时间
+ * @return 客户端发过来的原始字符串
  */
-string HttpResponse::getRequestData(SOCKET &skt) {
+string HttpResponse::getRequestData(int recvTimeout) {
     const int len = 1024;
     char buf[len];
     int code;
     string data;
 
-    int recvTimeout = 3 * 1000;
-    setsockopt(skt, SOL_SOCKET, SO_RCVTIMEO, (char *)&recvTimeout, sizeof(int));
+    // 设置超时返回
+    setsockopt(connSocket, SOL_SOCKET, SO_RCVTIMEO, (char *) &recvTimeout, sizeof(int));
 
     while (1) {
+        // 尝试接收 1024 个字节
         memset(buf, '\0', len);
-        code = recv(skt, buf, len, 0);
+        code = recv(connSocket, buf, len, 0);
         data += buf;
         if (code == len) {
             // 有可能全部数据刚好 len 个字节，如果再去 recv，就会阻塞
@@ -81,7 +97,11 @@ string HttpResponse::getRequestData(SOCKET &skt) {
         } else if (code == SOCKET_ERROR) {
             // socket 异常中断或读取超时
             char msg[100];
-            sprintf(msg, "SOCKET_ERROR code:%d", WSAGetLastError());
+            int errorCode = WSAGetLastError();
+            if (errorCode == 10060)
+                sprintf(msg, "recv timeout");
+            else
+                sprintf(msg, "recv ERROR code:%d", errorCode);
             throw SocketException(msg);
         }
         break;
@@ -95,23 +115,28 @@ string HttpResponse::getRequestData(SOCKET &skt) {
  */
 void HttpResponse::handleGet(HttpRequest &request) {
     string url = request.getURL();
-    string contentType("text/plain; charset=UTF-8");
+    string responseContentType("text/plain; charset=UTF-8");
+
+    // 判断请求 URL
     if (url == "/hello" || url == "/") {
-        write(OK_200, "Nice to meet you!", contentType);
+        write(OK_200, "Nice to meet you!", responseContentType);
     } else if (url == "/time") {
-        write(OK_200, "Server time is:", contentType);
+        write(OK_200, "Server time is:", responseContentType);
     } else {
+        // 前面路径都匹配不上，此时尝试根据 URL 读取文件
         try {
             string data = getFile(url);
             string fileType = getFileType(url);
+            // 成功读取到文件，并判断文件类型
             if (fileType == "png" || fileType == "gif" || fileType == "jpeg")
-                contentType = "image/" + fileType;
+                responseContentType = "image/" + fileType;
             else if (fileType == "html" || fileType == "plain" || fileType == "xml")
-                contentType = "text/" + fileType;
+                responseContentType = "text/" + fileType;
             else
-                contentType = "application/octet-stream";
-            write(OK_200, data, contentType);
+                responseContentType = "application/octet-stream";
+            write(OK_200, data, responseContentType);
         } catch (invalid_argument e) {
+            // 进入异常说明客户端请求既没有匹配的处理项，也没有对应的文件，就返回 404 页面
             printf("[tid %d] %s\n", GetCurrentThreadId(), e.what());
             send404Page();
         }
@@ -119,7 +144,7 @@ void HttpResponse::handleGet(HttpRequest &request) {
 }
 
 /**
- * 根据 url 获取请问的文件类型
+ * 根据 url 获取请问的文件类型，如 png。如果 URL 不包含文件类型，返回空串
  *
  * @param url 请求 url
  * @return 文件类型
@@ -127,7 +152,7 @@ void HttpResponse::handleGet(HttpRequest &request) {
 string HttpResponse::getFileType(string url) {
     int p = url.find_last_of(".");
     if (p != -1)
-        return url.substr(p+1);
+        return url.substr(p + 1);
 
     return "";
 }
@@ -138,8 +163,7 @@ string HttpResponse::getFileType(string url) {
 void HttpResponse::handlePost(HttpRequest &request) {
     string url = request.getURL();
     string contentType("text/plain; charset=UTF-8");
-
-    write(OK_200, "received", contentType);
+    write(OK_200, "POST request received.", contentType);
 }
 
 
@@ -150,58 +174,78 @@ void HttpResponse::handleRequest() {
     while (1) {
         try {
             // 读取客户端数据
-            string rawData = getRequestData(connSocket);
-            cout << "[tid " << GetCurrentThreadId() << "]" << "[request " + getClientIPPort() + "]" << endl << rawData << endl;
+            string rawData = getRequestData();
+            cout << "[tid " << GetCurrentThreadId() << "]" << "[request " + clientIPport + "]" << endl << rawData
+                 << endl;
 
-            // 构建请求对象
+            // 构建请求对象，并调用相关方法进行处理
             HttpRequest request(rawData);
             if (request.getMethod() == "GET") {
                 handleGet(request);
             } else if (request.getMethod() == "POST") {
                 handlePost(request);
             }
-        } catch (SocketException e) {
-            // 遇到任何异常就断开连接
+        } catch (SocketException &e) {
+            // 遇到任何 socket 异常就跳出循环
+            char msg[100];
+            sprintf_s(msg, "[tid %d][socket %s] %s\n", GetCurrentThreadId(), &clientIPport[0], e.what());
+            cout << msg;
+            break;
+        } catch (invalid_argument &e) {
+            char msg[100];
+            sprintf_s(msg, "[tid %d][socket %s] %s\n", GetCurrentThreadId(), &clientIPport[0], e.what());
+            cout << msg;
             break;
         }
     }
 
     // 关闭连接
     closesocket(connSocket);
-    cout << "[tid " << GetCurrentThreadId() << "]" << "[close socket " << getClientIPPort() << "]" << "thread finished" << endl;
+    char msg[100];
+    sprintf_s(msg, "[tid %d][socket %s] thread finished\n", GetCurrentThreadId(), &clientIPport[0]);
+    cout << msg;
 }
 
 /**
  * 向客户端发送数据
  *
+ * @param responseLine 响应行
+ * @param responseBody 响应体
+ * @param contentType 响应体数据类型
  * @return 发送数据的字节数
  */
-int HttpResponse::write(string responseLine, string data, string contentType) {
-    // 添加 body 长度信息
-    addHeader("Content-Length", to_string(data.length()));
-    addHeader("Content-Type", contentType);
+int HttpResponse::write(const string &responseLine, const string &responseBody, const string &contentType) {
+    // 在 Header 中添加 body 类型和长度信息
+    setHeader("Content-Length", to_string(responseBody.length()));
+    setHeader("Content-Type", contentType);
 
+    // 发送数据
     string sendHeader = getStrHeader();
-    string sendData = responseLine + sendHeader + data;
+    string sendData = responseLine + sendHeader + responseBody;
     int n = send(connSocket, &sendData[0], sendData.size(), 0);
-    if (n == SOCKET_ERROR)
-        throw SocketException();
+    if (n == SOCKET_ERROR) {
+        char msg[100];
+        sprintf_s(msg, "response failed, error code: %d", WSAGetLastError());
+        throw SocketException(msg);
+    }
 
     // 打印发送信息到控制台
     string printSendData;
-    if (data.length() > 20)
-        printSendData = responseLine + sendHeader + data.substr(0, 20) + "\n...\n";
+    if (responseBody.length() > 20)
+        // 若 responseBody 类容过长，只显示前 20 个字符
+        printSendData = responseLine + sendHeader + responseBody.substr(0, 20) + "\n...\n";
     else
         printSendData = sendData;
-    cout << "[tid " << GetCurrentThreadId() << "]" << "[reply " + getClientIPPort() + "]" << endl << printSendData << endl;
+    cout << "[tid " << GetCurrentThreadId() << "]" << "[reply " + clientIPport + "]" << endl << printSendData
+         << endl;
     return n;
 }
 
 /**
  * 添加响应头
  */
-void HttpResponse::addHeader(string key, string value) {
-    if (key == "")
+void HttpResponse::setHeader(const string &key, const string &value) {
+    if (key.empty())
         return;
     responseHeader[key] = value;
 }
@@ -230,9 +274,9 @@ void HttpResponse::initDefaultHeader() {
 /**
  * 读取文件
  */
-string HttpResponse::getFile(string URL) {
+string HttpResponse::getFile(const string &URL) {
     string filePath = rootDir + URL;
-    ifstream file(filePath, ios::in | ios::binary);
+    ifstream file(filePath, ios::in | ios::binary);     // 二进制模式读取
     if (!file) {
         throw invalid_argument("file not exists");
     } else {
@@ -246,18 +290,40 @@ string HttpResponse::getFile(string URL) {
  * 发送 404 page
  */
 void HttpResponse::send404Page() {
-    string data = getFile("/404.html");
+    string data = "<!DOCTYPE html>\n"
+                  "<html lang=\"en\">\n"
+                  "<head>\n"
+                  "    <meta charset=\"UTF-8\">\n"
+                  "    <title>404 Not Found</title>\n"
+                  "</head>\n"
+                  "<body>\n"
+                  "<h1>Not Found</h1>\n"
+                  "<p>The requested URL was not found on this server.</p>\n"
+                  "\n"
+                  "</body>\n"
+                  "</html>";
     write(NOT_FOUND_404, data, "text/html");
 }
 
-string HttpResponse::getClientIPPort() {
-    struct sockaddr_in peerAddr;
+/**
+ * 获取客户端 IP 和端口号
+ */
+string HttpResponse::getClientIPPort(SOCKET &connSocket) {
+    string clientIPport;
+
+    sockaddr_in peerAddr;
     int len = sizeof(peerAddr);
-    if (getpeername(connSocket, (struct sockaddr *)&peerAddr, &len) == 0) {
-        char info[80];
+    if (getpeername(connSocket, (struct sockaddr *) &peerAddr, &len) == 0) {
+        // socket 存活时才能获取成功
+        char info[50];
         sprintf(info, "%s:%d", inet_ntoa(peerAddr.sin_addr), ntohs(peerAddr.sin_port));
         clientIPport = string(info);
-        return clientIPport;
-    } else
-        return clientIPport;
+    } else {
+        // clientIPport 为空串说明服务端尝试读取 socket 时，此 socket 已经被客户端关闭了
+        int errorCode = WSAGetLastError();
+        char msg[100];
+        sprintf_s(msg, "getpeername ERROR:%d", errorCode);
+        clientIPport = msg;
+    }
+    return clientIPport;
 }

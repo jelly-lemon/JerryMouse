@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.15)
 project(MiniWebServer)
 
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_EXE_LINKER_FLAGS "-static")   # 链接库到 exe 中
+# C/C++运行库静态编译进可执行文件里
+# set(CMAKE_EXE_LINKER_FLAGS "-static")   # 链接库到 exe 中
 
 
 add_executable(main main.cpp)

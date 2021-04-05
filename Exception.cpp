@@ -1,9 +1,16 @@
+/**
+ * 异常类
+ */
+
 #pragma once
 #include <iostream>
 #include <exception>
-
 using namespace std;
 
+
+/**
+ * 自定义 Socket 异常
+ */
 struct SocketException : public exception {
 private:
     string msg;
