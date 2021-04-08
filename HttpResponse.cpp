@@ -11,6 +11,7 @@
 
 using namespace std;
 
+
 /**
  * 对 HTTP 响应封装成类 HttpResponse
  */
@@ -56,11 +57,8 @@ public:
     string getRequestData(int recvTimeout = 3 * 1000);
 
     static string rootDir;  // 资源所在根目录
-
-
-
-
 };
+
 
 /**
  * 获取客户端发送过来的原始字符串
