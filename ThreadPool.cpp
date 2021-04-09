@@ -3,7 +3,7 @@
 
 #include <pthread.h>
 #include <winsock2.h>
-#include <windows.h>
+#include "HttpResponse.cpp"
 
 using namespace std;
 
@@ -16,7 +16,15 @@ private:
     int poolSize;  // 线程池大小
     int currentNumber;    // 现有线程数量
     pthread_rwlock_t rwlock;    // 读写锁
+
+    static void *t_main(void *args);
+
 public:
+    /**
+     * 线程池初始化
+     *
+     * @param poolSize 线程池大小
+     */
     explicit ThreadPool(int poolSize) {
         this->poolSize = poolSize;
         this->currentNumber = 0;
@@ -24,7 +32,7 @@ public:
         pthread_rwlock_init(&this->rwlock, NULL);
     }
 
-    void startThread(void *(*t_func)(void *), SOCKET connSocket);
+    void startThread(SOCKET connSocket);
 
     void addCurrentNumber();
 
@@ -45,7 +53,7 @@ struct ThreadArgs {
  *
  * 如果暂时没有可用的线程，就一直等待
  */
-void ThreadPool::startThread(void *(*t_func)(void *), SOCKET connSocket) {
+void ThreadPool::startThread(SOCKET connSocket) {
     // 等待线程池空位
     while (1) {
         pthread_rwlock_rdlock(&rwlock); // 读加锁
@@ -58,7 +66,7 @@ void ThreadPool::startThread(void *(*t_func)(void *), SOCKET connSocket) {
             ThreadArgs *args = new ThreadArgs{connSocket, this};
             // 创建线程
             pthread_t t;
-            pthread_create(&t, NULL, t_func, (void *) args);
+            pthread_create(&t, NULL, t_main, (void *) args);
             pthread_rwlock_unlock(&rwlock); // 读解锁
 
             // 线程现有量加 1
@@ -87,7 +95,25 @@ void ThreadPool::subCurrentNumber() {
     pthread_rwlock_unlock(&rwlock); // 写解锁
 }
 
+/**
+ * 处理连接需要开启的子线程函数
+ */
+void *ThreadPool::t_main(void *args) {
+    // 解析参数
+    ThreadArgs *pThreadArgs = (ThreadArgs *) args;
+    SOCKET connSocket = pThreadArgs->connSocket;
+    ThreadPool *pThreadPool = pThreadArgs->pThreadPool;
+    delete pThreadArgs;
 
+    // 对客户端请求进行响应
+    HttpResponse response(connSocket);
+    response.handleRequest();
+
+    // 线程池现有线程数量减 1
+    pThreadPool->subCurrentNumber();
+
+    return NULL;
+}
 
 
 

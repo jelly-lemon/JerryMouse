@@ -3,11 +3,11 @@
 
 #include <winsock2.h>
 #include <map>
-#include <fstream>
 #include <sstream>
 #include <iostream>
 #include "HttpRequest.cpp"
 #include "Exception.cpp"
+#include "Log.cpp"
 
 using namespace std;
 
@@ -94,12 +94,12 @@ string HttpResponse::getRequestData(int recvTimeout) {
             throw SocketException("client closed connection");
         } else if (code == SOCKET_ERROR) {
             // socket 异常中断或读取超时
-            char msg[100];
+            char msg[101] = {'\0'};
             int errorCode = WSAGetLastError();
             if (errorCode == 10060)
-                sprintf(msg, "recv timeout");
+                snprintf(msg, 100, "recv timeout");
             else
-                sprintf(msg, "recv ERROR code:%d", errorCode);
+                snprintf(msg, 100, "recv ERROR code:%d", errorCode);
             throw SocketException(msg);
         }
         break;
@@ -135,7 +135,9 @@ void HttpResponse::handleGet(HttpRequest &request) {
             write(OK_200, data, responseContentType);
         } catch (invalid_argument e) {
             // 进入异常说明客户端请求既没有匹配的处理项，也没有对应的文件，就返回 404 页面
-            printf("[tid %d] %s\n", GetCurrentThreadId(), e.what());
+            char msg[101] = {'\0'};
+            snprintf(msg, 100, "[tid %d] %s\n", GetCurrentThreadId(), e.what());
+            Log::record(msg);
             send404Page();
         }
     }
@@ -173,8 +175,10 @@ void HttpResponse::handleRequest() {
         try {
             // 读取客户端数据
             string rawData = getRequestData();
-            cout << "[tid " << GetCurrentThreadId() << "]" << "[request " + clientIPport + "]" << endl << rawData
-                 << endl;
+            char msg[1024] = {'\0'};
+            snprintf(msg, 1023, "[tid %d][request %s]\n%s\n", GetCurrentThreadId(), clientIPport.c_str(), rawData.c_str());
+            msg[1022] = '\n';
+            Log::record(msg);
 
             // 构建请求对象，并调用相关方法进行处理
             HttpRequest request(rawData);
@@ -183,25 +187,20 @@ void HttpResponse::handleRequest() {
             } else if (request.getMethod() == "POST") {
                 handlePost(request);
             }
-        } catch (SocketException &e) {
+        } catch (exception &e) {
             // 遇到任何 socket 异常就跳出循环
-            char msg[100];
-            sprintf_s(msg, "[tid %d][socket %s] %s\n", GetCurrentThreadId(), &clientIPport[0], e.what());
-            cout << msg;
-            break;
-        } catch (invalid_argument &e) {
-            char msg[100];
-            sprintf_s(msg, "[tid %d][socket %s] %s\n", GetCurrentThreadId(), &clientIPport[0], e.what());
-            cout << msg;
+            char msg[101] = {'\0'};
+            snprintf(msg, 100, "[tid %d][socket %s] %s\n", GetCurrentThreadId(), clientIPport.c_str(), e.what());
+            Log::record(msg);
             break;
         }
     }
 
     // 关闭连接
     closesocket(connSocket);
-    char msg[100];
-    sprintf_s(msg, "[tid %d][socket %s] thread finished\n", GetCurrentThreadId(), &clientIPport[0]);
-    cout << msg;
+    char msg[1024] = {'\0'};
+    snprintf(msg, 1023, "[tid %d][socket %s] thread finished\n", GetCurrentThreadId(), clientIPport.c_str());
+    Log::record(msg);
 }
 
 /**
@@ -222,8 +221,8 @@ int HttpResponse::write(const string &responseLine, const string &responseBody, 
     string sendData = responseLine + sendHeader + responseBody;
     int n = send(connSocket, &sendData[0], sendData.size(), 0);
     if (n == SOCKET_ERROR) {
-        char msg[100];
-        sprintf_s(msg, "response failed, error code: %d", WSAGetLastError());
+        char msg[1024] = {'\0'};
+        snprintf(msg, 1023, "response failed, error code: %d", WSAGetLastError());
         throw SocketException(msg);
     }
 
@@ -234,8 +233,10 @@ int HttpResponse::write(const string &responseLine, const string &responseBody, 
         printSendData = responseLine + sendHeader + responseBody.substr(0, 20) + "\n...\n";
     else
         printSendData = sendData;
-    cout << "[tid " << GetCurrentThreadId() << "]" << "[reply " + clientIPport + "]" << endl << printSendData
-         << endl;
+
+    char msg[1024] = {'\0'};
+    snprintf(msg, 1023, "[tid %d][reply %s]\n%s\n", GetCurrentThreadId(), clientIPport.c_str(), printSendData.c_str());
+    Log::record(msg);
     return n;
 }
 
@@ -276,7 +277,8 @@ string HttpResponse::getFile(const string &URL) {
     string filePath = rootDir + URL;
     ifstream file(filePath, ios::in | ios::binary);     // 二进制模式读取
     if (!file) {
-        throw invalid_argument("file not exists");
+        string msg = URL + " file not exists";
+        throw invalid_argument(msg);
     } else {
         ostringstream fileContent;
         fileContent << file.rdbuf();

@@ -19,11 +19,13 @@ private:
     static bool writeThreadIsRunning;
 
 public:
-    static void write(string msg, bool printTime = true);
+    static void write(string msg, bool isPrintTime = true);
 
-    static void print(string msg, bool printTime = true);
+    static void print(string msg, bool isPrintTime = true);
 
-    static void record(string msg, bool printTime = true);
+    static void record(string msg, bool isPrintTime = true);
+
+    static void record_debug(string msg);
 
     static string getLogFilePath();
 
@@ -43,7 +45,9 @@ void* Log::t_write(void* args) {
             string msg = msgList.front();
             msgList.pop_front();
             string filePath = getLogFilePath();
-            ofstream logFile(filePath, ios::app);   // 打开文件
+            // 【难点】要以二进制格式写入，不然 \r\n 会被解析成 \r\r\n
+            // 以二进制格式写入，\r\n 就原模原样写入
+            ofstream logFile(filePath, ios::app | ios::binary);   // 打开文件
             if (logFile) {
                 logFile << msg;
             }
@@ -58,8 +62,8 @@ void* Log::t_write(void* args) {
 /**
  * 输出到日志文件
  */
-void Log::write(string msg, bool printTime) {
-    if (printTime) {
+void Log::write(string msg, bool isPrintTime) {
+    if (isPrintTime) {
         string sTime = "[" + getCurrentTime() + "]";
         msg = sTime + msg;
     }
@@ -76,8 +80,8 @@ void Log::write(string msg, bool printTime) {
 /**
  * 输出到控制台
  */
-void Log::print(string msg, bool printTime) {
-    if (printTime) {
+void Log::print(string msg, bool isPrintTime) {
+    if (isPrintTime) {
         string sTime = "[" + getCurrentTime() + "]";
         msg = sTime + msg;
     }
@@ -86,16 +90,26 @@ void Log::print(string msg, bool printTime) {
     pthread_mutex_unlock(&printLock);
 }
 
+
+
 /**
  * 输出到控制台和日志文件
  */
-void Log::record(string msg, bool printTime) {
-    if (printTime) {
+void Log::record(string msg, bool isPrintTime) {
+    if (isPrintTime) {
         string sTime = "[" + getCurrentTime() + "]";
         msg = sTime + msg;
     }
     print(msg, false);
     write(msg, false);
+}
+
+/**
+ * record 加上 Debug 标签
+ */
+void Log::record_debug(string msg) {
+    msg += "[Debug]";
+    Log::record(msg);
 }
 
 /**

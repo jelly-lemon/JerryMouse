@@ -4,31 +4,10 @@
 #include <string>
 #include <winsock2.h>
 #include "ThreadPool.cpp"
-#include "HttpResponse.cpp"
 #include "Log.cpp"
-
 
 using namespace std;
 
-/**
- * 处理连接需要开启的子线程函数
- */
-void *t_main(void *args) {
-    // 解析参数
-    ThreadArgs *pThreadArgs = (ThreadArgs *) args;
-    SOCKET connSocket = pThreadArgs->connSocket;
-    ThreadPool *pThreadPool = pThreadArgs->pThreadPool;
-    delete pThreadArgs;
-
-    // 对客户端请求进行响应
-    HttpResponse response(connSocket);
-    response.handleRequest();
-
-    // 线程池现有线程数量减 1
-    pThreadPool->subCurrentNumber();
-
-    return NULL;
-}
 
 /**
  * 对服务端封装成类
@@ -39,6 +18,7 @@ private:
 
     static void showAcceptSocketInfo(SOCKET acceptSocket);
 
+
 public:
     explicit MiniWebServer(int poolSize = 30) : threadPool(ThreadPool(poolSize)) {
         initWSA();
@@ -46,9 +26,8 @@ public:
 
     void initWSA();
 
-    void startServer(int port, int listenNumber, string ip="");
+    void startServer(int port, int listenNumber, string ip = "");
 };
-
 
 
 /**
@@ -73,9 +52,9 @@ void MiniWebServer::showAcceptSocketInfo(SOCKET acceptSocket) {
 void MiniWebServer::startServer(int port, int listenNumber, string ip) {
     // 创建监听 socket
     SOCKADDR_IN addrSrv;
-    if (ip == "")
+    if (ip == "" || ip == "0.0.0.0")
         addrSrv.sin_addr.S_un.S_addr = htonl(INADDR_ANY);   // INADDR_ANY 表示监听所有网卡
-    else if (ip == "localhost") {
+    else if (ip == "localhost" || ip == "127.0.0.1") {
         addrSrv.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
     } else {
         addrSrv.sin_addr.S_un.S_addr = inet_addr(ip.c_str());
@@ -112,7 +91,7 @@ void MiniWebServer::startServer(int port, int listenNumber, string ip) {
         int len = sizeof(SOCKADDR);
         // 等待连接
         SOCKET connSocket = accept(acceptSocket, (SOCKADDR *) &addrClient, &len);    // 没有客户端请求就会阻塞，有就接受
-        threadPool.startThread(t_main, connSocket);
+        threadPool.startThread(connSocket);
     }
 }
 
@@ -136,3 +115,5 @@ void MiniWebServer::initWSA() {
         exit(-1);
     }
 }
+
+

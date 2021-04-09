@@ -19,7 +19,11 @@ public:
     explicit SocketException(string msg = "Socket Error"): msg(msg) {
 
     }
-    const char * what() {
-        return &msg[0];
+    /**
+     * 必须要加 const throw() 才能覆盖父类方法
+     * 不然捕获到异常，调用 e.what 只会返回 std::exception
+     */
+    const char * what() const throw(){
+        return msg.c_str();
     }
 };
