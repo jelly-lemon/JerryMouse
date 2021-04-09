@@ -7,7 +7,9 @@ using namespace std;
 string HttpResponse::rootDir = "D:/0-3-CLion/MiniWebServer/root";   // 资源根目录
 
 
-int main() {
+
+int main(int argc, char *argv[]) {
+
     MiniWebServer server;
     server.startServer(12345, 1, "");
 
