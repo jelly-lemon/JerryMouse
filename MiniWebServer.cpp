@@ -26,7 +26,7 @@ public:
 
     void initWSA();
 
-    void startServer(int port, int listenNumber, string ip = "");
+    void startServer(int port, int maxSocketNumber, string ip = "");
 };
 
 
@@ -47,9 +47,9 @@ void MiniWebServer::showAcceptSocketInfo(SOCKET acceptSocket) {
  *
  * @param ip 本机 ip 地址
  * @param port 监听端口
- * @param listenNumber 最大监听 socket 数量
+ * @param maxSocketNumber 最大监听 socket 数量
 */
-void MiniWebServer::startServer(int port, int listenNumber, string ip) {
+void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     // 创建监听 socket
     SOCKADDR_IN addrSrv;
     if (ip == "" || ip == "0.0.0.0")
@@ -68,11 +68,11 @@ void MiniWebServer::startServer(int port, int listenNumber, string ip) {
     n = bind(acceptSocket, (SOCKADDR *) &addrSrv, sizeof(SOCKADDR));
     if (n == SOCKET_ERROR) {
         int error_code = WSAGetLastError();
-        char msg[100];
+        char msg[101];
         if (error_code == WSAEADDRINUSE) {
-            sprintf(msg, "port %d is in use, can't bind\n", port);
+            snprintf(msg, 100, "port %d is in use, can't bind\n", port);
         } else {
-            sprintf(msg, "can't bind socket at %s:%d, WSA error code:%d\n", ip.c_str(), port, error_code);
+            snprintf(msg, 100, "can't bind socket at %s:%d, WSA error code:%d\n", ip.c_str(), port, error_code);
         }
         Log::record(msg);
         WSACleanup();
@@ -83,7 +83,7 @@ void MiniWebServer::startServer(int port, int listenNumber, string ip) {
     // backlog 参数表示最多建立多少个 socket 连接，只要服务端收到了客户端请求就算一个 socket
     // 当现有 socket 连接已经到了 backlog 容量，就会拒绝其余 socket 连接
     // 服务端每次 accept()，就会从队列中取出一个 socket，backlog 空位就加 1
-    listen(acceptSocket, listenNumber); // 开始监听请求
+    listen(acceptSocket, maxSocketNumber); // 开始监听请求
     showAcceptSocketInfo(acceptSocket);
     Log::record("waiting for connection...\n");
     while (1) {
