@@ -76,6 +76,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
         }
         Log::record(msg);
         WSACleanup();
+        system("pause");
         return;
     }
 
@@ -84,7 +85,16 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     // 当现有 socket 连接已经到了 backlog 容量，就会拒绝其余 socket 连接
     // 服务端每次 accept()，就会从队列中取出一个 socket，backlog 空位就加 1
     listen(acceptSocket, maxSocketNumber); // 开始监听请求
+    char msg[101];
+    snprintf(msg, 100, "max listen socket number is %d\n", maxSocketNumber);
+    Log::record(msg);
     showAcceptSocketInfo(acceptSocket);
+    if (port == 80) {
+        snprintf(msg, 100, "now, you can visit http://localhost to browse homepage.\n");
+    } else {
+        snprintf(msg, 100, "now, you can visit http://localhost:%d to browse homepage.\n", port);
+    }
+    Log::record(msg);
     Log::record("waiting for connection...\n");
     while (1) {
         SOCKADDR_IN addrClient;

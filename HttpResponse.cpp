@@ -116,19 +116,27 @@ void HttpResponse::handleGet(HttpRequest &request) {
     string responseContentType("text/plain; charset=UTF-8");
 
     // 判断请求 URL
-    if (url == "/hello" || url == "/") {
+    if (url == "/hello") {
         write(OK_200, "Nice to meet you!", responseContentType);
     } else if (url == "/time") {
-        write(OK_200, "Server time is:", responseContentType);
+        char msg[101] = {'\0'};
+        snprintf(msg, 100, "Server time is:%s\n", Log::getCurrentTime().c_str());
+        write(OK_200, msg, responseContentType);
     } else {
+        if (url == "/")
+            url = "/home.html";
         // 前面路径都匹配不上，此时尝试根据 URL 读取文件
         try {
             string data = getFile(url);
             string fileType = getFileType(url);
             // 成功读取到文件，并判断文件类型
-            if (fileType == "png" || fileType == "gif" || fileType == "jpeg")
-                responseContentType = "image/" + fileType;
-            else if (fileType == "html" || fileType == "plain" || fileType == "xml")
+            if (fileType == "png" || fileType == "gif" || fileType == "jpeg" || fileType == "svg") {
+                if (fileType == "svg")
+                    responseContentType = "image/svg+xml";
+                else
+                    responseContentType = "image/" + fileType;
+
+            } else if (fileType == "html" || fileType == "plain" || fileType == "xml" || fileType == "css")
                 responseContentType = "text/" + fileType;
             else
                 responseContentType = "application/octet-stream";
@@ -176,7 +184,8 @@ void HttpResponse::handleRequest() {
             // 读取客户端数据
             string rawData = getRequestData();
             char msg[1024] = {'\0'};
-            snprintf(msg, 1023, "[tid %d][request %s]\n%s\n", GetCurrentThreadId(), clientIPport.c_str(), rawData.c_str());
+            snprintf(msg, 1023, "[tid %d][request %s]\n%s\n", GetCurrentThreadId(), clientIPport.c_str(),
+                     rawData.c_str());
             msg[1022] = '\n';
             Log::record(msg);
 

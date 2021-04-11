@@ -3,7 +3,7 @@ project(MiniWebServer)
 
 set(CMAKE_CXX_STANDARD 11)
 # C/C++运行库静态编译进可执行文件里
-# set(CMAKE_EXE_LINKER_FLAGS "-static")   # 链接库到 exe 中
+ set(CMAKE_EXE_LINKER_FLAGS "-static")   # 动态库静态链接库到 exe 中
 
 
 add_executable(main main.cpp)

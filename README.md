@@ -6,12 +6,16 @@ Windows 平台下的超迷你 Web 服务端
 
 # 开发环境
 IDE：CLion<br/>
-编译器：MinGW-w64 6.0<br/>
+编译器：mingw64-x86_64-8.1.0-release-posix-sjlj-rt_v6-rev0<br/>
 运行平台：Windows 10<br/>
 
 # 取名
 JimDog<br/>
 JerryMouse
+
+# TODO
+[] URL base64 解析
+
 
 # 思考
 Http 请求设置了 keep-alive，如果服务端持续没有收到客户端请求，那究竟服务端保持多久呢？如果不释放，就一直占着资源。
