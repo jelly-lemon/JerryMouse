@@ -30,7 +30,7 @@ void printUsage() {
 int main(int argc, char *argv[]) {
     string ip = "0.0.0.0";
     int port = 80;
-    int maxSocketNumber = 30;
+    int maxSocketNumber = 30000;
 
     printUsage();
     // 解析命令行参数
