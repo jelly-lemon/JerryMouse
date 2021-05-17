@@ -13,8 +13,8 @@ using namespace std;
  */
 class ThreadPool {
 private:
-    int poolSize;  // 线程池大小
-    int currentNumber;    // 现有线程数量
+    int poolSize;               // 线程池大小
+    int currentNumber;          // 现有线程数量
     pthread_rwlock_t rwlock;    // 读写锁
 
     static void *t_main(void *args);
@@ -27,9 +27,8 @@ public:
      */
     explicit ThreadPool(int poolSize) {
         this->poolSize = poolSize;
-        this->currentNumber = 0;
-        // 初始化读写锁
-        pthread_rwlock_init(&this->rwlock, NULL);
+        this->currentNumber = 0;    // 现有量为 0
+        pthread_rwlock_init(&this->rwlock, NULL);      // 初始化读写锁
     }
 
     void startThread(SOCKET connSocket);
@@ -43,7 +42,7 @@ public:
  * 对要传给子线程函数的内容封装成一个结构体
  */
 struct ThreadArgs {
-    SOCKET connSocket;  // socket 连接
+    SOCKET connSocket;          // socket 描述符
     ThreadPool *pThreadPool;    // 线程池对象的地址
 };
 
@@ -57,11 +56,12 @@ void ThreadPool::startThread(SOCKET connSocket) {
     // 等待线程池空位
     while (1) {
         pthread_rwlock_rdlock(&rwlock); // 读加锁
+        // 如果现有线程数量 >= 线程池容量，就睡眠 0.1s
         if (this->currentNumber >= this->poolSize) {
-            pthread_rwlock_unlock(&rwlock);             // 读解锁
+            pthread_rwlock_unlock(&rwlock); // 读解锁
             Sleep(100);
         } else {
-            // 【难点】注意这里给线程传参，传的是地址，如果是局部变量的地址，这个函数一结束，局变就没了，
+            // 【易错点】注意这里给线程传参，传的是地址，如果是局部变量的地址，这个函数一结束，局变就没了，
             // 子线程拿到这个地址再去取数据，就是有问题的。
             ThreadArgs *args = new ThreadArgs{connSocket, this};
             // 创建线程

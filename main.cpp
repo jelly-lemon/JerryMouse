@@ -71,7 +71,6 @@ int main(int argc, char *argv[]) {
                     printf("--socket=%s is invalid\n", optarg);
                     exit(0);
                 }
-
         }
     }
 

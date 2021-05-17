@@ -23,7 +23,7 @@ private:
 
     SOCKET connSocket;  // 要响应的 socket
     map<string, string> responseHeader; // 响应头
-    string clientIPport;    // 客户端 IP和端口
+    string clientIPport;    // 客户端 IP 和端口
 
     void send404Page();
 
@@ -141,7 +141,7 @@ void HttpResponse::handleGet(HttpRequest &request) {
             else
                 responseContentType = "application/octet-stream";
             write(OK_200, data, responseContentType);
-        } catch (invalid_argument e) {
+        } catch (invalid_argument &e) {
             // 进入异常说明客户端请求既没有匹配的处理项，也没有对应的文件，就返回 404 页面
             char msg[101] = {'\0'};
             snprintf(msg, 100, "[tid %d] %s\n", GetCurrentThreadId(), e.what());

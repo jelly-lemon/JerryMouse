@@ -14,7 +14,7 @@ using namespace std;
  */
 class MiniWebServer {
 private:
-    ThreadPool threadPool;  // 线程池
+    ThreadPool threadPool;  // 线程池对象
 
     static void showAcceptSocketInfo(SOCKET acceptSocket);
 
