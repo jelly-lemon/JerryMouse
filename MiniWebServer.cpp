@@ -53,7 +53,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     // 创建监听 socket
     SOCKADDR_IN addrSrv;
     if (ip == "" || ip == "0.0.0.0")
-        addrSrv.sin_addr.S_un.S_addr = htonl(INADDR_ANY);   // INADDR_ANY 表示监听所有网卡
+        addrSrv.sin_addr.S_un.S_addr = htonl(INADDR_ANY);   // INADDR_ANY 表示监听所有网卡，也就是本机所有 IP 地址
     else if (ip == "localhost" || ip == "127.0.0.1") {
         addrSrv.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
     } else {
@@ -63,7 +63,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     addrSrv.sin_port = htons(port);
     SOCKET acceptSocket = socket(AF_INET, SOCK_STREAM, 0);
 
-    // 判断端口是否可用
+    // 监听指定端口
     int n;
     n = bind(acceptSocket, (SOCKADDR *) &addrSrv, sizeof(SOCKADDR));
     if (n == SOCKET_ERROR) {
@@ -81,9 +81,10 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     }
 
     // 等待客户端连接
-    // backlog 参数表示最多建立多少个 socket 连接，只要服务端收到了客户端请求就算一个 socket
+    // backlog 参数表示最多可建立多少个 socket 连接，只要服务端收到了客户端请求就算一个 socket
     // 当现有 socket 连接已经到了 backlog 容量，就会拒绝其余 socket 连接
     // 服务端每次 accept()，就会从队列中取出一个 socket，backlog 空位就加 1
+    // 【知识点】当队列中的连接数（socket）达到backlog个后，系统收到syn将不再回复syn+ack。这种情况下协议栈通常仅仅是将syn包丢掉，而不是回复rst报文，从而让客户端可以重试。
     listen(acceptSocket, maxSocketNumber); // 开始监听请求
     char msg[101];
     snprintf(msg, 100, "max listen socket number is %d\n", maxSocketNumber);
@@ -112,16 +113,24 @@ void MiniWebServer::initWSA() {
     WORD wVersionRequested; // WORD 就是 unsigned short，无符号短整型
     WSADATA wsaData;    // 一个结构体。这个结构被用来存储被 WSAStartup 函数调用后返回的 Windows Sockets 数据。
     wVersionRequested = MAKEWORD(1, 1); // 将两个 byte 型合并成一个 word 型,一个在高8位(b),一个在低8位(a)。整数 1 是 byte 类型吗？
-    int n;
 
     // 初始化套接字环境
-    n = WSAStartup(wVersionRequested, &wsaData);  // 即WSA(Windows Sockets Asynchronous，Windows异步套接字)的启动命令
+    int n = WSAStartup(wVersionRequested, &wsaData);  // 即WSA(Windows Sockets Asynchronous，Windows异步套接字)的启动命令
     if (n != 0) {
+        int err = WSAGetLastError();
+        char msg[101] = {'\0'};
+        snprintf(msg, 100, "WSAStartup failed. err:%d\n", err);
+        Log::record(msg);
         exit(-1);
     }
+
     // 检查是否初始化成功
     if (LOBYTE(wsaData.wVersion) != 1 || HIBYTE(wsaData.wVersion) != 1) {
         WSACleanup();   // 功能是终止 Winsock 2 DLL (Ws2_32.dll) 的使用
+        int err = WSAGetLastError();
+        char msg[101] = {'\0'};
+        snprintf(msg, 100, "WSAStartup failed. err:%d\n", err);
+        Log::record(msg);
         exit(-1);
     }
 }

@@ -32,13 +32,15 @@ int main(int argc, char *argv[]) {
     int port = 80;
     int maxSocketNumber = 30000;
 
-    printUsage();
+    printUsage(); // 打印参数使用方法
+
     // 解析命令行参数
     struct option long_options[] =
             {
-                    {"ip",      optional_argument, 0, 'i'},
-                    {"port",    optional_argument, 0, 'p'},
-                    {"socket",  optional_argument, 0, 's'},
+                    {"ip",      optional_argument,  0, 'i'},
+                    {"port",    optional_argument,  0, 'p'},
+                    {"socket",  optional_argument,  0, 's'},
+                    {"help",    no_argument,        0, 'h'},
                     {0,         0,                 0, 0}
             };
     while (1) {
@@ -62,7 +64,6 @@ int main(int argc, char *argv[]) {
                     printf("--port=%s is invalid\n", optarg);
                     exit(0);
                 }
-
             case 's':
                 try {
                     maxSocketNumber = stoi(optarg);
@@ -71,6 +72,9 @@ int main(int argc, char *argv[]) {
                     printf("--socket=%s is invalid\n", optarg);
                     exit(0);
                 }
+            case 'h':
+                printUsage();
+                exit(0);
         }
     }
 
