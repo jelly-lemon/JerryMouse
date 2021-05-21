@@ -76,6 +76,7 @@ string HttpResponse::getRequestData(int recvTimeout) {
     // 设置超时返回
     setsockopt(connSocket, SOL_SOCKET, SO_RCVTIMEO, (char *) &recvTimeout, sizeof(int));
 
+    // 读取数据
     while (1) {
         // 尝试接收 1024 个字节
         memset(buf, '\0', len);
@@ -104,6 +105,7 @@ string HttpResponse::getRequestData(int recvTimeout) {
         }
         break;
     }
+
     return data;
 }
 
@@ -182,7 +184,7 @@ void HttpResponse::handleRequest() {
     while (1) {
         try {
             // 读取客户端数据
-            string rawData = getRequestData();
+            string rawData = this->getRequestData();
             char msg[1024] = {'\0'};
             snprintf(msg, 1023, "[tid %d][request %s]\n%s\n", GetCurrentThreadId(), clientIPport.c_str(),
                      rawData.c_str());

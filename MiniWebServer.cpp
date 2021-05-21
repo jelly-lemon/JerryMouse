@@ -81,10 +81,8 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     }
 
     // 等待客户端连接
-    // backlog 参数表示最多可建立多少个 socket 连接，只要服务端收到了客户端请求就算一个 socket
-    // 当现有 socket 连接已经到了 backlog 容量，就会拒绝其余 socket 连接
-    // 服务端每次 accept()，就会从队列中取出一个 socket，backlog 空位就加 1
-    // 【知识点】当队列中的连接数（socket）达到backlog个后，系统收到syn将不再回复syn+ack。这种情况下协议栈通常仅仅是将syn包丢掉，而不是回复rst报文，从而让客户端可以重试。
+    // 半连接（SYN_RCVD状态）队列大小和全连接（ESTABLISHED状态）队列大小
+    // backlog 指全连接队列大小
     listen(acceptSocket, maxSocketNumber); // 开始监听请求
     char msg[101];
     snprintf(msg, 100, "max listen socket number is %d\n", maxSocketNumber);

@@ -17,7 +17,7 @@ private:
     int currentNumber;          // 现有线程数量
     pthread_rwlock_t rwlock;    // 读写锁
 
-    static void *t_main(void *args);
+    static void *handle_connection_main(void *args);
 
 public:
     /**
@@ -66,7 +66,7 @@ void ThreadPool::startThread(SOCKET connSocket) {
             ThreadArgs *args = new ThreadArgs{connSocket, this};
             // 创建线程
             pthread_t t;
-            pthread_create(&t, NULL, t_main, (void *) args);
+            pthread_create(&t, NULL, handle_connection_main, (void *) args);
             pthread_rwlock_unlock(&rwlock); // 读解锁
 
             // 线程现有量加 1
@@ -98,7 +98,7 @@ void ThreadPool::subCurrentNumber() {
 /**
  * 处理连接需要开启的子线程函数
  */
-void *ThreadPool::t_main(void *args) {
+void *ThreadPool::handle_connection_main(void *args) {
     // 解析参数
     ThreadArgs *pThreadArgs = (ThreadArgs *) args;
     SOCKET connSocket = pThreadArgs->connSocket;
