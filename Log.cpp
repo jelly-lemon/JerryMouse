@@ -27,6 +27,8 @@ private:
 public:
     static void write(string msg, bool printTime = true);
 
+    static void debug();
+
     static void print(string msg, bool printTime = true);
 
     static void record(string msg, bool printTime = true);
@@ -80,7 +82,8 @@ void Log::write(string msg, bool printTime) {
     // 判断写线程是否在运行，如果没有，则启动
     if (!writeThreadIsRunning) {
         pthread_t t;
-        pthread_create(&t, NULL, t_write, NULL);
+        int n = pthread_create(&t, NULL, t_write, NULL);
+        cout << n << endl;
         writeThreadIsRunning = true;
     }
 
@@ -109,6 +112,9 @@ void Log::print(string msg, bool printTime) {
     pthread_mutex_unlock(&printLock);
 }
 
+void Log::debug() {
+
+}
 
 /**
  * 输出到控制台和日志文件
@@ -139,7 +145,8 @@ string Log::getLogFilePath() {
     struct tm *lt;
     time(&t);  // 获取当前时间，可以精度到秒
     lt = localtime(&t); // 用本地时区表示
-    sprintf(fileName, "%d_%02d_%02d.txt", lt->tm_year + 1900, lt->tm_mon, lt->tm_mday);
+    //【易错点】lt->tm_mon 从 0 开始，所以用的时候要加 1
+    sprintf(fileName, "%d_%02d_%02d.txt", lt->tm_year+1900, lt->tm_mon+1, lt->tm_mday);
 
     // 创建日志目录
     string logDir("./log");

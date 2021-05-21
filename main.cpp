@@ -6,7 +6,7 @@
 using namespace std;
 
 // 基础配置
-string HttpResponse::rootDir = "./root";   // 资源根目录
+string HttpResponse::rootDir = "D:/0-2-CLion/MiniWebServer/root";   // 资源根目录
 
 
 
@@ -21,7 +21,7 @@ void printUsage() {
     printf("\nusage:\n");
     printf("%-10s default=0.0.0.0, listen ip address\n", "--ip");
     printf("%-10s default=80, listen port\n", "--port");
-    printf("%-10s default=30, max listen socket number\n", "--socket");
+    printf("%-10s default=30, max accept socket number\n", "--socket");
     printf("\nexample:\n");
     printf("MiniWebServer.exe --port=12345\n");
     printf("--------------------------------------------------------\n");

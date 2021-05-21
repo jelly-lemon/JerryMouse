@@ -85,7 +85,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     // backlog 指全连接队列大小
     listen(acceptSocket, maxSocketNumber); // 开始监听请求
     char msg[101];
-    snprintf(msg, 100, "max listen socket number is %d\n", maxSocketNumber);
+    snprintf(msg, 100, "max accept socket number is %d\n", maxSocketNumber);
     Log::record(msg);
     showAcceptSocketInfo(acceptSocket);
     if (port == 80) {
@@ -93,6 +93,8 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     } else {
         snprintf(msg, 100, "now, you can visit http://localhost:%d to browse homepage.\n", port);
     }
+    Log::record(msg);
+    snprintf(msg, 100, "root dir is %s\n", HttpResponse::rootDir.c_str());
     Log::record(msg);
     Log::record("waiting for connection...\n");
     while (1) {
