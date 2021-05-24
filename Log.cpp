@@ -23,8 +23,11 @@ private:
     static pthread_mutex_t printLock;   // 打印互斥锁
     static list <string> msgList;       // 消息队列
     static bool writeThreadIsRunning;
+    static string logDir;               // 日志目录
 
 public:
+    static void init();
+
     static void write(string msg, bool printTime = true);
 
     static void debug();
@@ -40,6 +43,12 @@ public:
     static void *t_write(void *args);
 };
 
+/**
+ * 初始化日志模块
+ */
+void Log::init() {
+    // 启动日志线程
+}
 
 /**
  * 线程函数，从消息队列中取消息，然后写入文件
@@ -52,7 +61,7 @@ void *Log::t_write(void *args) {
             string msg = msgList.front();
             msgList.pop_front();
             string filePath = getLogFilePath();
-            // 【难点】要以二进制格式写入，不然 \r\n 会被解析成 \r\r\n
+            // 【难点】要以二进制格式写入，不然 \r\n 会被写成 \r\r\n
             // 以二进制格式写入，\r\n 就原模原样写入
             ofstream logFile(filePath, ios::app | ios::binary);   // 打开文件
             if (logFile) {
@@ -82,8 +91,7 @@ void Log::write(string msg, bool printTime) {
     // 判断写线程是否在运行，如果没有，则启动
     if (!writeThreadIsRunning) {
         pthread_t t;
-        int n = pthread_create(&t, NULL, t_write, NULL);
-        cout << n << endl;
+        pthread_create(&t, NULL, t_write, NULL);
         writeThreadIsRunning = true;
     }
 
@@ -184,3 +192,5 @@ pthread_mutex_t Log::writeLock;
 pthread_mutex_t Log::printLock;
 list <string> Log::msgList;
 bool Log::writeThreadIsRunning = false;
+
+

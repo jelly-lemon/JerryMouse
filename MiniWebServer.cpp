@@ -84,7 +84,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     // 半连接（SYN_RCVD状态）队列大小和全连接（ESTABLISHED状态）队列大小
     // backlog 指全连接队列大小
     listen(acceptSocket, maxSocketNumber); // 开始监听请求
-    char msg[101];
+    char msg[101] = {'\0'};
     snprintf(msg, 100, "max accept socket number is %d\n", maxSocketNumber);
     Log::record(msg);
     showAcceptSocketInfo(acceptSocket);

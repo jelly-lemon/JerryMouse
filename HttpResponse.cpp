@@ -54,7 +54,7 @@ public:
 
     void handleRequest();
 
-    string getRequestData(int recvTimeout = 3 * 1000);
+    string getRequestData(int recvTimeout);
 
     static string rootDir;  // 资源所在根目录
 };
@@ -64,7 +64,7 @@ public:
  * 获取客户端发送过来的原始字符串
  *
  * @param socket 连接 socket
- * @param recvTimeout 读取超时返回时间
+ * @param recvTimeout 读取超时返回时间，单位是毫秒
  * @return 客户端发过来的原始字符串
  */
 string HttpResponse::getRequestData(int recvTimeout) {
@@ -74,7 +74,10 @@ string HttpResponse::getRequestData(int recvTimeout) {
     string data;
 
     // 设置超时返回
-    setsockopt(connSocket, SOL_SOCKET, SO_RCVTIMEO, (char *) &recvTimeout, sizeof(int));
+    // 【易错点】如果超时返回设置 0 的话，就表示一直等待直到有数据
+    if (recvTimeout >= 0) {
+        setsockopt(connSocket, SOL_SOCKET, SO_RCVTIMEO, (char *) &recvTimeout, sizeof(int));
+    }
 
     // 读取数据
     while (1) {
@@ -82,15 +85,9 @@ string HttpResponse::getRequestData(int recvTimeout) {
         memset(buf, '\0', len);
         code = recv(connSocket, buf, len, 0);
         data += buf;
-        if (code == len) {
-            // 有可能全部数据刚好 len 个字节，如果再去 recv，就会阻塞
-            // 检查是否是全部数据
-            if (HttpRequest::isAllData(data))
-                break;
-            continue;
-        } else if (0 < code && code < len) {
-            // 数据读完了
-        } else if (code == 0) {
+
+        // 判断读取情况
+        if (code == 0) {
             // 客户端主动关闭了
             throw SocketException("client closed connection");
         } else if (code == SOCKET_ERROR) {
@@ -102,8 +99,11 @@ string HttpResponse::getRequestData(int recvTimeout) {
             else
                 snprintf(msg, 100, "recv ERROR code:%d", errorCode);
             throw SocketException(msg);
+        } else {
+            // 判断是否收到全部数据
+            if (HttpRequest::isAllData(data))
+                break;
         }
-        break;
     }
 
     return data;
@@ -184,7 +184,7 @@ void HttpResponse::handleRequest() {
     while (1) {
         try {
             // 读取客户端数据
-            string rawData = this->getRequestData();
+            string rawData = this->getRequestData(-1);
             char msg[1024] = {'\0'};
             snprintf(msg, 1023, "[tid %d][request %s]\n%s\n", GetCurrentThreadId(), clientIPport.c_str(),
                      rawData.c_str());
@@ -198,6 +198,8 @@ void HttpResponse::handleRequest() {
             } else if (request.getMethod() == "POST") {
                 handlePost(request);
             }
+            // 响应了请求就立即返回
+            break;
         } catch (exception &e) {
             // 遇到任何 socket 异常就跳出循环
             char msg[101] = {'\0'};
