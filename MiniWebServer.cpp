@@ -52,7 +52,7 @@ void MiniWebServer::showAcceptSocketInfo(SOCKET acceptSocket) {
 void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     // 创建监听 socket
     SOCKADDR_IN addrSrv;
-    if (ip == "" || ip == "0.0.0.0")
+    if (ip.empty() || ip == "0.0.0.0")
         addrSrv.sin_addr.S_un.S_addr = htonl(INADDR_ANY);   // INADDR_ANY 表示监听所有网卡，也就是本机所有 IP 地址
     else if (ip == "localhost" || ip == "127.0.0.1") {
         addrSrv.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");

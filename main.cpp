@@ -28,27 +28,29 @@ void printUsage() {
 }
 
 int main(int argc, char *argv[]) {
-    string ip = "0.0.0.0";
-    int port = 80;
-    int maxSocketNumber = 10000;
+    // 默认参数
+    printUsage();               // 打印参数使用方法
+    string ip = "0.0.0.0";      // 监听 IP
+    int port = 80;              // 端口
+    int backlog = 99999;         // accept 队列大小
+    int theadPoolSize = 8;     // 线程池大小
 
-    printUsage(); // 打印参数使用方法
-
-    // 解析命令行参数
+    // 设置可解析参数列表
     struct option long_options[] =
             {
                     {"ip",      optional_argument,  0, 'i'},
                     {"port",    optional_argument,  0, 'p'},
-                    {"socket",  optional_argument,  0, 's'},
+                    {"backlog", optional_argument,  0, 'b'},
+                    {"thead",   optional_argument,  0, 't'},
                     {"help",    no_argument,        0, 'h'},
-                    {0,         0,                 0, 0}
+                    {0,         0,                  0,  0}
             };
-    while (1) {
-        int c;
-        int option_index = 0;
-        c = getopt_long_only(argc, argv, "",
-                             long_options, &option_index);
 
+    // 对命令行参数进行解析
+    while (1) {
+        int option_index;   //
+        int c = getopt_long_only(argc, argv, "",
+                             long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -64,23 +66,33 @@ int main(int argc, char *argv[]) {
                     printf("--port=%s is invalid\n", optarg);
                     exit(0);
                 }
-            case 's':
+            case 'b':
                 try {
-                    maxSocketNumber = stoi(optarg);
+                    backlog = stoi(optarg);
                     break;
                 } catch (exception &e) {
                     printf("--socket=%s is invalid\n", optarg);
                     exit(0);
                 }
+            case 't':
+                try {
+                    theadPoolSize = stoi(optarg);
+                    break;
+                } catch (exception &e) {
+                    printf("--thead=%s is invalid\n", optarg);
+                    exit(0);
+                }
             case 'h':
                 printUsage();
                 exit(0);
+            default:
+                break;
         }
     }
 
-
-    MiniWebServer server;
-    server.startServer(port, maxSocketNumber, ip);
+    // 根据输入的参数启动服务端
+    MiniWebServer server(theadPoolSize);
+    server.startServer(port, backlog, ip);
 
     return 0;
 }
