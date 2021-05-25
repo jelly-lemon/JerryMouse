@@ -3,10 +3,6 @@ Windows 平台下的超迷你 Web 服务端
 # 功能描述
 能够响应客户端 HTTP GET 静态资源请求，比如 *.html，图片等。
 
-# 技术特点
-首先，主线程用 while 循环从 accept 队列取出 socket；其次，根据线程池创建子线程响应 socket；最后，响应完毕后，立即关闭 socket 并结束子线程。
-
-
 # 开发环境
 IDE：CLion<br/>
 编译器：mingw64-x86_64-8.1.0-release-posix-sjlj-rt_v6-rev0<br/>
@@ -18,6 +14,15 @@ IDE：CLion<br/>
 异步日志：
 
 # 性能测试
+## v1：while 版
+
+## v2：select 版
+
+## v3：poll 版
+
+## v4：IOCP 版
+
+## v4：epoll 版（Linux 版）
 
 
 # 取名
@@ -54,4 +59,3 @@ A：无法获取
 Q: 队列日志，读一条消息，就打开、关闭文件，要是有大量日志，会不会造成写入缓慢？
 A:
 
-# 压力测试
