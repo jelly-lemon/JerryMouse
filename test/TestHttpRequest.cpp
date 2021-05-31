@@ -1,7 +1,7 @@
 #include <iostream>
 #include <gtest/gtest.h>
 #include <string.h>
-#include "../v1/src/HttpRequest.cpp"
+#include "../src/HttpRequest.cpp"
 using namespace std;
 
 /**
