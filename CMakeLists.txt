@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 11)
  set(CMAKE_EXE_LINKER_FLAGS "-static")   # 动态库静态链接库到 exe 中
 
 
-add_executable(main v1/src/main_v1.cpp)
+add_executable(main src/main.cpp)
 target_link_libraries(main wsock32.lib)
 
 message("CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
