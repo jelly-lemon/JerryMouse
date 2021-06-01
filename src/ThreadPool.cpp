@@ -59,7 +59,7 @@ void ThreadPool::startThread(SOCKET connSocket) {
         // 如果现有线程数量 >= 线程池容量，就睡眠 0.1s
         if (this->currentNumber >= this->poolSize) {
             pthread_rwlock_unlock(&rwlock); // 读解锁
-            Sleep(100);
+            // Sleep(100);
         } else {
             // 【易错点】注意这里给线程传参，传的是地址，如果是局部变量的地址，这个函数一结束，局变就没了，
             // 子线程拿到这个地址再去取数据，就是有问题的。

@@ -9,6 +9,8 @@
 using namespace std;
 
 
+SOCKET g_connSocket[FD_SETSIZE];    // 存放
+
 /**
  * 对服务端封装成类
  */
@@ -97,14 +99,52 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     snprintf(msg, 100, "root dir is %s\n", HttpResponse::rootDir.c_str());
     Log::record(msg);
     Log::record("waiting for connection...\n");
+
+    // 启动 select 线程
+
+
     while (1) {
         SOCKADDR_IN addrClient;
         int len = sizeof(SOCKADDR);
+
         // 等待连接
         SOCKET connSocket = accept(acceptSocket, (SOCKADDR *) &addrClient, &len);    // 没有客户端请求就会阻塞，有就接受
-        threadPool.startThread(connSocket);
+        // threadPool.startThread(connSocket);
+        // 放入监听集合当中
     }
 }
+
+/**
+ * 使用 select 监听 socket 的线程
+ */
+void MiniWebServer::selectThread() {
+    fd_set fdread; // 待读集合
+    timeval tv{2, 0};
+    //每次循环都要清空集合，否则不能检测描述符变化
+    FD_ZERO(&fdread);   // 初始化 fd_set
+    // 【易错点】每次调用select之前都要重新在fdread中设置文件描述符，
+    // 因为事件发生以后，文件描述符集合将被内核修改
+    FD_SET(acceptSocket, &fdread);  // 将 socket 加入到集合中
+    int n = select(NULL, &fdread, NULL, NULL, &tv); // 阻塞等待，除非有事件或超时
+    if (n == SOCKET_ERROR) {
+
+    }
+    // 如果是 acceptSocket 就绪，说明有新连接建立
+    if (acceptSocket) {
+        // 添加 connSocket 到集合中
+
+    }
+
+    for (int i = 0; i < fdread.fd_count; i++) {
+        //测试sock是否可读，即是否网络上有数据
+        if (FD_ISSET(fdread.fd_array[i], &fdread)) {
+            SOCKADDR_IN addrClient;
+            SOCKET connSocket = accept(acceptSocket, (SOCKADDR*)&addrClient, )
+        }
+    }
+
+}
+
 
 /**
  * 初始化 socket 调用环境
