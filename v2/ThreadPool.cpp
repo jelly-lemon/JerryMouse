@@ -3,7 +3,11 @@
 
 #include <pthread.h>
 #include <winsock2.h>
+#include <vector>
+#include <thread>
+#include <functional>
 #include "HttpResponse.cpp"
+#include "SyncQueue.cpp"
 
 using namespace std;
 
@@ -13,9 +17,11 @@ using namespace std;
  */
 class ThreadPool {
 private:
-    int poolSize;               // 线程池大小
-    int currentNumber;          // 现有线程数量
-    pthread_rwlock_t rwlock;    // 读写锁
+    int corePoolSize;
+    int maximumPoolSize;
+    vector<thread> workers;             // 工作线程
+    SyncQueue<function<void()>> tasks;  // 任务队列
+
 
     static void *handle_connection_main(void *args);
 
@@ -25,10 +31,9 @@ public:
      *
      * @param poolSize 线程池大小
      */
-    explicit ThreadPool(int poolSize) {
+    explicit ThreadPool(int poolSize): tasks(30) {
         this->poolSize = poolSize;
         this->currentNumber = 0;    // 现有量为 0
-        pthread_rwlock_init(&this->rwlock, NULL);      // 初始化读写锁
     }
 
     void startThread(SOCKET connSocket);
@@ -36,6 +41,9 @@ public:
     void addCurrentNumber();
 
     void subCurrentNumber();
+
+
+
 };
 
 /**
