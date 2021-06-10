@@ -14,17 +14,16 @@
  */
 #include <list>
 #include <mutex>
-#include <condition_variable>
+#include <winsock2.h>
+#include "Log.cpp"
 using namespace std;
 
-template<typename T>
-class SyncQueue {
+class TaskQueue {
 private:
-    list<T> m_queue;
-    mutex m_mutex;
-    condition_variable_any m_notEmpty;
-    condition_variable_any m_notFull;
+    list<SOCKET> m_queue;
+//    mutex m_mutex;
     int m_maxSize;
+
 
     bool isFull() {
         return m_queue.size() == m_maxSize;
@@ -33,32 +32,33 @@ private:
     bool isEmpty() {
         return m_queue.empty();
     }
+
 public:
-    explicit SyncQueue(int maxSize): m_maxSize(maxSize) {
+    explicit TaskQueue(int maxSize) : m_maxSize(maxSize) {
 
     }
 
-    void put(const T& x) {
-        unique_lock<mutex> locker(m_mutex);
 
-        while (isFull()) {
-            m_notFull.wait(locker);    // 阻塞等待锁
+    bool put(const SOCKET &x) {
+//        lock_guard<mutex> guard(m_mutex);
+        if (isFull()) {
+            Log::print("TaskQueue is full.\n");
+            return false;
+        } else {
+            m_queue.push_back(x);
+            return true;
         }
-        m_queue.push_back(x);
-        m_notEmpty.notify_one();    // 通知一个正在 m_notEmpty.wait(locker) 的线程
     }
 
-
-    T take() {
-        unique_lock<mutex> locker(m_mutex);
-        while (isEmpty()) {
-            // 队列为空时就等待，直到被唤醒
-            m_notEmpty.wait(locker);
+    SOCKET take() {
+//        lock_guard<mutex> guard(m_mutex);
+        if (isEmpty()) {
+            throw runtime_error("TaskQueue is empty");
+        } else {
+            SOCKET x = m_queue.front();
+            m_queue.pop_front();
+            return x;
         }
-
-        T x = m_queue.front();
-        m_queue.pop_front();
-        m_notFull.notify_one();
     }
 
 };

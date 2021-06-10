@@ -128,7 +128,7 @@ void Log::debug() {
  * 输出到控制台和日志文件
  */
 void Log::record(string msg, bool printTime) {
-    return;
+//    return;
     // 添加时间标记
     if (printTime) {
         string sTime = "[" + getCurrentTime() + "]";
