@@ -25,6 +25,8 @@ private:
     static bool writeThreadIsRunning;
     static string logDir;               // 日志目录
 
+    static bool isWriteToFile;
+
 public:
     static void init();
 
@@ -41,6 +43,12 @@ public:
     static string getCurrentTime();
 
     static void *t_write(void *args);
+
+    static string getString(const char *format, va_list arg);
+
+    static void info(const char *format, ...);
+
+    static string getPrefix();
 };
 
 /**
@@ -120,8 +128,55 @@ void Log::print(string msg, bool printTime) {
     pthread_mutex_unlock(&printLock);
 }
 
-void Log::debug() {
+string Log::getString(const char *format, va_list arg) {
+    int done;
+    const int len = 104; // 字符数组长度
+    char msg[len];
 
+    // 【易错点】要用 vsnprintf，不能用 snprintf
+    // 带 v 的都是使用变量 va_list 传递变参
+    // 如果格式化后的字符串长度超过 10，则会被截断，并返回 -1
+    // 减 4 表示给省略号和\0的位置，即:"...\0"的位置
+    done = vsnprintf(msg, len-4, format, arg);
+
+    // 字符串过长时，用省略号表示
+    if (done == -1) {
+        for (int i = 1; i <= 3; i++) {
+            msg[len-1-i] = '.';
+        }
+        msg[len-1] = '\0';
+    } else {
+        msg[done] = '\0';
+    }
+
+    return string(msg);
+}
+
+void Log::info(const char *format, ...) {
+
+    // 获取格式化后的字符串
+    va_list arg;
+    va_start(arg, format);
+    string s = getString(format, arg);
+    va_end(arg);
+
+    // 打印字符串
+    string sPrefix = getPrefix();
+    cout << sPrefix << s << std::flush;;
+
+    // 写入文件
+    if (isWriteToFile) {
+        write(s);
+    }
+}
+
+string Log::getPrefix() {
+    string sTime = "[" + getCurrentTime() + "]";
+    char sTid[21];
+    snprintf(sTid, 20, "[tid %d]", GetCurrentThreadId());
+
+    string s = sTime + sTid;
+    return s;
 }
 
 /**
@@ -186,6 +241,7 @@ string Log::getCurrentTime() {
     return s;
 }
 
+
 /**
  * 静态变量初始化（只能在类外部）
  */
@@ -193,5 +249,6 @@ pthread_mutex_t Log::writeLock;
 pthread_mutex_t Log::printLock;
 list <string> Log::msgList;
 bool Log::writeThreadIsRunning = false;
+bool Log::isWriteToFile = false;
 
 

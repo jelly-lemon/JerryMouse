@@ -108,35 +108,57 @@ SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string i
 void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     SOCKET acceptSocket = createListenSocket(port, maxSocketNumber, ip);
 
-    fd_set fd;
-    FD_ZERO(&fd);
-    FD_SET(acceptSocket, &fd);
-
+    fd_set new_readfds;
+    fd_set readfds;
     int iResult, i;
+
+    FD_ZERO(&readfds);
+    FD_SET(acceptSocket, &readfds);
     while (1) {
-        fd_set fdOld = fd;
-        iResult = select(0, &fdOld, NULL, NULL,/*&tm*/NULL);
+        // 清空 new_readfds
+        FD_ZERO(&new_readfds);
+
+        // 监听集合中的 socket
+        iResult = select(0, &readfds, NULL, NULL,/*&tm*/NULL);
         if (0 < iResult) {
-            for (i = 0; i < fd.fd_count; i++) {
-                if (FD_ISSET(fd.fd_array[i], &fdOld)) {
-                    //如果socket是服务器，则接收连接
-                    if (fd.fd_array[i] == acceptSocket) {
+            // 遍历每一个 socket，检查是否可读
+            for (i = 0; i < readfds.fd_count; i++) {
+                // 该 socket 是否有可读事件
+                if (FD_ISSET(readfds.fd_array[i], &readfds)) {
+                    //如果是监听 socket，则接收连接
+                    if (readfds.fd_array[i] == acceptSocket) {
                         sockaddr connAddr;
                         int len = sizeof(connAddr);
                         SOCKET connSocket = accept(acceptSocket, &connAddr, &len);
-                        FD_SET(connSocket, &fd);
+
+                        // 将新 socket 放入新集合
+                        FD_SET(connSocket, &new_readfds);
                     } else {
-                        threadPool.submit(fd.fd_array[i]);
+                        // 如果是连接 socket，则表明有可读事件
+                        bool rt = threadPool.submit(readfds.fd_array[i]);
+                        if (rt == false) {
+                            Log::info("submit failed, TaskQueue is full, close socket.\n");
+                            closesocket(readfds.fd_array[i]);
+                        }
                     }
+                } else {
+                    // 该 socket 没有可读事件，放入到集合中，等待下次 select
+                    FD_SET(readfds.fd_array[i], &new_readfds);
                 }
             }
         } else if (0 == iResult) {
+            // 超时
             continue;
         } else {
+            // 其它错误
+            Log::info("iResult:%d, WSAError:%d\n", iResult, WSAGetLastError());
             continue;
         }
-    }
 
+        // 设置下轮监听集合
+        readfds = new_readfds;
+        FD_SET(acceptSocket, &readfds);
+    }
 }
 
 

@@ -15,7 +15,7 @@ using namespace std;
 class ThreadPool {
 private:
     int poolSize;       // 线程池容量
-//    mutex m_mutex;
+    mutex m_mutex;
     int currentThreadNumber;
     TaskQueue tasksQueue;  // 任务队列
 
@@ -52,15 +52,16 @@ public:
  * 子线程函数
  */
 void *ThreadPool::worker_main(void *args) {
-    auto *p_threadPool = (ThreadPool *)args;
+    Log::info(" new worker\n");
 
+    auto *p_threadPool = (ThreadPool *)args;
     while (true) {
         try {
             // 取任务并执行
             SOCKET connSocket = p_threadPool->getTask();
             ThreadPool::handleSocket(connSocket);
         } catch(exception &err) {
-            Log::print(err.what());
+            Log::info(" %s, thread finished.\n", err.what());
             break;
         }
     }
@@ -78,7 +79,7 @@ void *ThreadPool::worker_main(void *args) {
  */
 bool ThreadPool::submit(SOCKET connSocket) {
     if (tasksQueue.put(connSocket)) {
-//        lock_guard<mutex> guard(m_mutex);
+        lock_guard<mutex> guard(m_mutex);
         if (currentThreadNumber < poolSize) {
             createNewThread();
         }
@@ -93,7 +94,7 @@ bool ThreadPool::submit(SOCKET connSocket) {
  */
 void ThreadPool::createNewThread() {
     pthread_t worker;
-    pthread_create(&worker, NULL, ThreadPool::worker_main, NULL);
+    pthread_create(&worker, NULL, ThreadPool::worker_main, (void*)this);
     currentThreadNumber++;
 }
 
@@ -108,7 +109,7 @@ SOCKET ThreadPool::getTask() {
  * 某个线程结束时，现有线程数量减 1
  */
 void ThreadPool::onWorkerFinished() {
-//    lock_guard<std::mutex> guard(m_mutex);
+    lock_guard<std::mutex> guard(m_mutex);
     currentThreadNumber--;
 }
 

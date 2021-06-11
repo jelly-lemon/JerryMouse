@@ -198,7 +198,9 @@ void HttpResponse::handleRequest() {
             } else if (request.getMethod() == "POST") {
                 handlePost(request);
             }
+
             // 响应了请求就立即返回
+            Log::info("[socket %s] reply finished, we closed socket.\n", clientIPport.c_str());
             break;
         } catch (exception &e) {
             // 遇到任何 socket 异常就跳出循环
@@ -211,9 +213,6 @@ void HttpResponse::handleRequest() {
 
     // 关闭连接
     closesocket(connSocket);
-    char msg[1024] = {'\0'};
-    snprintf(msg, 1023, "[tid %d][socket %s] thread finished\n", GetCurrentThreadId(), clientIPport.c_str());
-    Log::record(msg);
 }
 
 /**

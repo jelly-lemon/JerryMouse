@@ -21,7 +21,7 @@ using namespace std;
 class TaskQueue {
 private:
     list<SOCKET> m_queue;
-//    mutex m_mutex;
+    mutex m_mutex;
     int m_maxSize;
 
 
@@ -40,9 +40,8 @@ public:
 
 
     bool put(const SOCKET &x) {
-//        lock_guard<mutex> guard(m_mutex);
+        lock_guard<mutex> guard(m_mutex);
         if (isFull()) {
-            Log::print("TaskQueue is full.\n");
             return false;
         } else {
             m_queue.push_back(x);
@@ -51,7 +50,7 @@ public:
     }
 
     SOCKET take() {
-//        lock_guard<mutex> guard(m_mutex);
+        lock_guard<mutex> guard(m_mutex);
         if (isEmpty()) {
             throw runtime_error("TaskQueue is empty");
         } else {
