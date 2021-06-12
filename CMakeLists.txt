@@ -13,6 +13,6 @@ target_link_libraries(main_v1 wsock32.lib)
 add_executable(main_v2 v2/main_v2.cpp)
 target_link_libraries(main_v2 wsock32.lib)
 
-add_executable(test v2/test.cpp)
+add_executable(test test.cpp)
 target_link_libraries(test wsock32.lib)
 

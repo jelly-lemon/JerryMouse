@@ -3,10 +3,9 @@
 
 #include <string>
 #include <winsock2.h>
-#include "ThreadPool.cpp"
+#include "../ThreadPool.cpp"
 
 using namespace std;
-
 
 
 /**
@@ -88,7 +87,7 @@ SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string i
         snprintf(msg, 100, "now, you can visit http://localhost:%d to browse homepage.\n", port);
     }
     Log::record(msg);
-    snprintf(msg, 100, "root dir is %s\n", HttpResponse::rootDir.c_str());
+    snprintf(msg, 100, "web_root dir is %s\n", HttpResponse::rootDir.c_str());
     Log::record(msg);
     Log::record("waiting for connection...\n");
 

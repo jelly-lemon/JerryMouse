@@ -96,7 +96,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
         snprintf(msg, 100, "now, you can visit http://localhost:%d to browse homepage.\n", port);
     }
     Log::record(msg);
-    snprintf(msg, 100, "root dir is %s\n", HttpResponse::rootDir.c_str());
+    snprintf(msg, 100, "web_root dir is %s\n", HttpResponse::rootDir.c_str());
     Log::record(msg);
     Log::record("waiting for connection...\n");
     while (1) {
