@@ -96,6 +96,10 @@ string HttpResponse::getRequestData(int recvTimeout) {
             int errorCode = WSAGetLastError();
             if (errorCode == 10060)
                 snprintf(msg, 100, "recv timeout");
+            else if (errorCode == 10035) {
+                snprintf(msg, 100, " recv buffer is empty");
+                closesocket(connSocket);
+            }
             else
                 snprintf(msg, 100, "recv ERROR code:%d", errorCode);
             throw SocketException(msg);
@@ -198,10 +202,6 @@ void HttpResponse::handleRequest() {
             } else if (request.getMethod() == "POST") {
                 handlePost(request);
             }
-
-            // 响应了请求就立即返回
-            Log::info("[socket %s] reply finished, we closed socket.\n", clientIPport.c_str());
-            break;
         } catch (exception &e) {
             // 遇到任何 socket 异常就跳出循环
             char msg[101] = {'\0'};
@@ -212,7 +212,12 @@ void HttpResponse::handleRequest() {
     }
 
     // 关闭连接
-    closesocket(connSocket);
+    Log::info("[socket %d, %s] reply finished, we closed socket.\n", connSocket, clientIPport.c_str());
+    int n = closesocket(connSocket);
+    Log::info(" closesocket, n:%d\n", n);
+    if (n == SOCKET_ERROR) {
+        Log::info(" close socket err, WSAError:%d\n", WSAGetLastError());
+    }
 }
 
 /**
@@ -227,11 +232,12 @@ int HttpResponse::write(const string &responseLine, const string &responseBody, 
     // 在 Header 中添加 body 类型和长度信息
     setHeader("Content-Length", to_string(responseBody.length()));
     setHeader("Content-Type", contentType);
+    setHeader("Connection", "close");
 
     // 发送数据
     string sendHeader = getStrHeader();
     string sendData = responseLine + sendHeader + responseBody;
-    int n = send(connSocket, &sendData[0], sendData.size(), 0);
+    int n = send(connSocket, sendData.c_str(), sendData.size(), 0);
     if (n == SOCKET_ERROR) {
         char msg[1024] = {'\0'};
         snprintf(msg, 1023, "response failed, error code: %d", WSAGetLastError());

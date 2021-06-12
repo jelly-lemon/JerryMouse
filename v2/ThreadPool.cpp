@@ -78,6 +78,7 @@ void *ThreadPool::worker_main(void *args) {
  * @return: 提交成功或失败
  */
 bool ThreadPool::submit(SOCKET connSocket) {
+    Log::info(" submit: %d\n", connSocket);
     if (tasksQueue.put(connSocket)) {
         lock_guard<mutex> guard(m_mutex);
         if (currentThreadNumber < poolSize) {

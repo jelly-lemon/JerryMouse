@@ -4,12 +4,10 @@
 #include <string>
 #include <winsock2.h>
 #include "ThreadPool.cpp"
-#include "Log.cpp"
 
 using namespace std;
 
 
-SOCKET g_connSocket[FD_SETSIZE];    // 存放
 
 /**
  * 对服务端封装成类
@@ -108,56 +106,102 @@ SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string i
 void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     SOCKET acceptSocket = createListenSocket(port, maxSocketNumber, ip);
 
-    fd_set new_readfds;
-    fd_set readfds;
+    unsigned long ul=1;
+    ioctlsocket(acceptSocket,FIONBIO, &ul);    //设置成非阻塞模式
+
+
+//    struct timeval tv;
+//    tv.tv_sec = 1;
+//    tv.tv_usec = 500;
+
+    fd_set readable_fds;
+    fd_set to_be_checked_fds;
+    fd_set new_to_be_checked_fds;
+    fd_set exceptional_fds;
     int iResult, i;
 
-    FD_ZERO(&readfds);
-    FD_SET(acceptSocket, &readfds);
+    FD_ZERO(&readable_fds);
+    FD_ZERO(&to_be_checked_fds);
+    FD_SET(acceptSocket, &to_be_checked_fds);
     while (1) {
-        // 清空 new_readfds
-        FD_ZERO(&new_readfds);
+        // 清空 new_to_be_checked_fds
+        FD_ZERO(&new_to_be_checked_fds);
 
         // 监听集合中的 socket
-        iResult = select(0, &readfds, NULL, NULL,/*&tm*/NULL);
+//        Log::info(" before select, readable_fds.fd_count:%d\n", readable_fds.fd_count);
+
+        readable_fds = to_be_checked_fds;
+        exceptional_fds = to_be_checked_fds;
+        int len = readable_fds.fd_count;
+        Log::info("before select:");
+        for (i = 0; i < len; i++) {
+            printf("%d ", readable_fds.fd_array[i]);
+        }
+        cout << endl;
+        iResult = select(0, &readable_fds, NULL, &exceptional_fds,/*&tm*/NULL);
+        Log::info("after select:");
+        for (i = 0; i < len; i++) {
+            printf("%d ", readable_fds.fd_array[i]);
+        }
+        cout << endl;
         if (0 < iResult) {
+//            Log::info(" after select, readable_fds.fd_count:%d\n", readable_fds.fd_count);
             // 遍历每一个 socket，检查是否可读
-            for (i = 0; i < readfds.fd_count; i++) {
+            for (i = 0; i < len; i++) {
+                if (FD_ISSET(to_be_checked_fds.fd_array[i], &exceptional_fds)) {
+                    Log::info("socket:%d err, WSAERROR:%D", to_be_checked_fds.fd_array[i], WSAGetLastError());
+                    continue;
+                }
+
                 // 该 socket 是否有可读事件
-                if (FD_ISSET(readfds.fd_array[i], &readfds)) {
+                if (FD_ISSET(to_be_checked_fds.fd_array[i], &readable_fds)) {
+                    Log::info(" socket:%d is ok.\n", readable_fds.fd_array[i]);
                     //如果是监听 socket，则接收连接
-                    if (readfds.fd_array[i] == acceptSocket) {
+                    if (to_be_checked_fds.fd_array[i] == acceptSocket) {
                         sockaddr connAddr;
                         int len = sizeof(connAddr);
-                        SOCKET connSocket = accept(acceptSocket, &connAddr, &len);
+                        while (true) {
+                            SOCKET connSocket = accept(acceptSocket, &connAddr, &len);
+                            if (connSocket == INVALID_SOCKET) {
+//                                Log::info(" WSAError:%d\n", WSAGetLastError());
+                                break;
+                            }
+                            Log::info(" new socket:%d\n", connSocket);
 
-                        // 将新 socket 放入新集合
-                        FD_SET(connSocket, &new_readfds);
+                            // 将新 socket 放入新集合
+                            ioctlsocket(connSocket,FIONBIO, &ul);    //设置成非阻塞模式
+                            FD_SET(connSocket, &new_to_be_checked_fds);
+                        }
                     } else {
                         // 如果是连接 socket，则表明有可读事件
-                        bool rt = threadPool.submit(readfds.fd_array[i]);
+                        bool rt = threadPool.submit(readable_fds.fd_array[i]);
                         if (rt == false) {
                             Log::info("submit failed, TaskQueue is full, close socket.\n");
-                            closesocket(readfds.fd_array[i]);
+                            closesocket(readable_fds.fd_array[i]);
                         }
                     }
                 } else {
+//                    Log::info(" fd:%d, acceptSocket:%d\n", readable_fds.fd_array[i], acceptSocket);
+                    if (to_be_checked_fds.fd_array[i] == acceptSocket) {
+                        continue;
+                    }
+
+                    Log::info(" socket:%d go to next iter.\n", to_be_checked_fds.fd_array[i]);
                     // 该 socket 没有可读事件，放入到集合中，等待下次 select
-                    FD_SET(readfds.fd_array[i], &new_readfds);
+                    FD_SET(to_be_checked_fds.fd_array[i], &new_to_be_checked_fds);
                 }
             }
         } else if (0 == iResult) {
             // 超时
-            continue;
+            Log::info(" time out\n");
         } else {
             // 其它错误
-            Log::info("iResult:%d, WSAError:%d\n", iResult, WSAGetLastError());
-            continue;
+            Log::info(" select WSAError:%d\n", WSAGetLastError());
         }
 
         // 设置下轮监听集合
-        readfds = new_readfds;
-        FD_SET(acceptSocket, &readfds);
+        to_be_checked_fds = new_to_be_checked_fds;
+        FD_SET(acceptSocket, &to_be_checked_fds);
     }
 }
 
