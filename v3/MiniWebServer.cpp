@@ -1,14 +1,8 @@
 // 本文件包含了处理连接的子线程函数、MiniWebServer 类
 #pragma once
 
-#ifdef linux
-#include <sys/socket.h>
-#else
-#include <winsock2.h>
-#endif
-
 #include <string>
-
+#include <winsock2.h>
 #include "../ThreadPool.cpp"
 
 using namespace std;

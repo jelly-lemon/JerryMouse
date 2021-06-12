@@ -1,11 +1,9 @@
-#include "TaskQueue.cpp"
-
+#include<iostream>
+#include <sys/socket.h>
 using namespace std;
 
 int main() {
-    TaskQueue taskQueue(10);
-    taskQueue.put(0);
-
+    printf("hello\n");
 
     return 0;
 }
