@@ -1,9 +1,25 @@
 // 本文件包含了处理连接的子线程函数、MiniWebServer 类
 #pragma once
 
+
+#ifdef linux
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <asm-generic/ioctls.h>
+#include <sys/epoll.h>
+#define SOCKET int
+#elif win
+#error windows not suppport epoll!
+#else
+#error unsupported os, only windows and linux are suppoted!
+#endif
+
 #include <string>
-#include <winsock2.h>
+#include <fcntl.h>
 #include "../ThreadPool.cpp"
+
+#define MAX_EVENTS 10
 
 using namespace std;
 
@@ -35,8 +51,8 @@ public:
  * 打印 acceptSocket 监听的 IP 和端口
  */
 void MiniWebServer::showAcceptSocketInfo(SOCKET acceptSocket) {
-    struct sockaddr_in socketAddr;
-    int len = sizeof(socketAddr);
+    sockaddr_in socketAddr;
+    socklen_t len = sizeof(socketAddr);
     getsockname(acceptSocket, (struct sockaddr *) &socketAddr, &len);
     char msg[100];
     sprintf(msg, "server listen at %s:%d\n", inet_ntoa(socketAddr.sin_addr), ntohs(socketAddr.sin_port));
@@ -45,13 +61,13 @@ void MiniWebServer::showAcceptSocketInfo(SOCKET acceptSocket) {
 
 SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string ip) {
     // 创建监听 socket
-    SOCKADDR_IN addrSrv;
+    sockaddr_in addrSrv;
     if (ip.empty() || ip == "0.0.0.0")
-        addrSrv.sin_addr.S_un.S_addr = htonl(INADDR_ANY);   // INADDR_ANY 表示监听所有网卡，也就是本机所有 IP 地址
+        addrSrv.sin_addr.s_addr = htonl(INADDR_ANY);   // INADDR_ANY 表示监听所有网卡，也就是本机所有 IP 地址
     else if (ip == "localhost" || ip == "127.0.0.1") {
-        addrSrv.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+        addrSrv.sin_addr.s_addr = inet_addr("127.0.0.1");
     } else {
-        addrSrv.sin_addr.S_un.S_addr = inet_addr(ip.c_str());
+        addrSrv.sin_addr.s_addr = inet_addr(ip.c_str());
     }
     addrSrv.sin_family = AF_INET;
     addrSrv.sin_port = htons(port);
@@ -59,18 +75,15 @@ SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string i
 
     // 监听指定端口
     int n;
-    n = bind(acceptSocket, (SOCKADDR *) &addrSrv, sizeof(SOCKADDR));
-    if (n == SOCKET_ERROR) {
-        int error_code = WSAGetLastError();
-        char msg[101];
-        if (error_code == WSAEADDRINUSE) {
-            snprintf(msg, 100, "port %d is in use, can't bind\n", port);
+    n = bind(acceptSocket, (sockaddr *) &addrSrv, sizeof(sockaddr));
+    if (n == -1) {
+        if (errno == EADDRINUSE) {
+            Log::info("port %d is in use, can't bind\n", port);
         } else {
-            snprintf(msg, 100, "can't bind socket at %s:%d, WSA error code:%d\n", ip.c_str(), port, error_code);
+            Log::info("can't bind socket at %s:%d, error code:%d\n", ip.c_str(), port, errno);
         }
-        Log::record(msg);
-        WSACleanup();
-        exit(-1);
+        // TODO 退出时要保证最后一条日志正常写入文件
+        exit(0);
     }
 
     // 半连接（SYN_RCVD状态）队列大小和全连接（ESTABLISHED状态）队列大小
@@ -106,132 +119,41 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     SOCKET acceptSocket = createListenSocket(port, maxSocketNumber, ip);
 
     unsigned long ul=1;
-    ioctlsocket(acceptSocket,FIONBIO, &ul);    //设置成非阻塞模式
+    // win 环境下用 ioctlsocket， Linux 环境下用 fcntl
+    fcntl(acceptSocket, FIONBIO, &ul);   // 设置成非阻塞模式
 
 
-//    struct timeval tv;
-//    tv.tv_sec = 1;
-//    tv.tv_usec = 500;
+    int epfd = epoll_create(MAX_EVENTS);
+    if (epfd == -1) {
+        Log::info("epoll_create failed, err:%d\n", errno);
+        exit(EXIT_FAILURE);
+    }
+    struct epoll_event ev, events[MAX_EVENTS];
+    ev.events = EPOLLIN;
+    ev.data.fd = acceptSocket;
+    epoll_ctl(epfd, EPOLL_CTL_ADD, acceptSocket, &ev);
 
-    fd_set readable_fds;
-    fd_set to_be_checked_fds;
-    fd_set new_to_be_checked_fds;
-    fd_set exceptional_fds;
-    int iResult, i;
-
-    FD_ZERO(&readable_fds);
-    FD_ZERO(&to_be_checked_fds);
-    FD_SET(acceptSocket, &to_be_checked_fds);
     while (1) {
-        // 清空 new_to_be_checked_fds
-        FD_ZERO(&new_to_be_checked_fds);
-
-        // 监听集合中的 socket
-//        Log::info(" before select, readable_fds.fd_count:%d\n", readable_fds.fd_count);
-
-        readable_fds = to_be_checked_fds;
-        exceptional_fds = to_be_checked_fds;
-        int len = readable_fds.fd_count;
-        Log::info("before select:");
-        for (i = 0; i < len; i++) {
-            printf("%d ", readable_fds.fd_array[i]);
+        int nfds = epoll_wait(epfd, events, MAX_EVENTS, -1);
+        if (nfds == -1) {
+            Log::info("epoll_wait failed, errno:%d\n", errno);
+            exit(EXIT_FAILURE);
         }
-        cout << endl;
-        iResult = select(0, &readable_fds, NULL, &exceptional_fds,/*&tm*/NULL);
-        Log::info("after select:");
-        for (i = 0; i < len; i++) {
-            printf("%d ", readable_fds.fd_array[i]);
-        }
-        cout << endl;
-        if (0 < iResult) {
-//            Log::info(" after select, readable_fds.fd_count:%d\n", readable_fds.fd_count);
-            // 遍历每一个 socket，检查是否可读
-            for (i = 0; i < len; i++) {
-                if (FD_ISSET(to_be_checked_fds.fd_array[i], &exceptional_fds)) {
-                    Log::info("socket:%d err, WSAERROR:%D", to_be_checked_fds.fd_array[i], WSAGetLastError());
-                    continue;
-                }
+        for (int i = 0; i < nfds; i++) {
+            int fd = events[i].data.fd;
+            // 如果是监听 socket
+            if (fd == acceptSocket) {
+                while (true) {
+                    sockaddr clientAddr;
+                    socklen_t addrLen = sizeof(sockaddr);
+                    int connSocket = accept(acceptSocket, &clientAddr, &addrLen);
 
-                // 该 socket 是否有可读事件
-                if (FD_ISSET(to_be_checked_fds.fd_array[i], &readable_fds)) {
-                    Log::info(" socket:%d is ok.\n", readable_fds.fd_array[i]);
-                    //如果是监听 socket，则接收连接
-                    if (to_be_checked_fds.fd_array[i] == acceptSocket) {
-                        sockaddr connAddr;
-                        int len = sizeof(connAddr);
-                        while (true) {
-                            SOCKET connSocket = accept(acceptSocket, &connAddr, &len);
-                            if (connSocket == INVALID_SOCKET) {
-//                                Log::info(" WSAError:%d\n", WSAGetLastError());
-                                break;
-                            }
-                            Log::info(" new socket:%d\n", connSocket);
-
-                            // 将新 socket 放入新集合
-                            ioctlsocket(connSocket,FIONBIO, &ul);    //设置成非阻塞模式
-                            FD_SET(connSocket, &new_to_be_checked_fds);
-                        }
-                    } else {
-                        // 如果是连接 socket，则表明有可读事件
-                        bool rt = threadPool.submit(readable_fds.fd_array[i]);
-                        if (rt == false) {
-                            Log::info("submit failed, TaskQueue is full, close socket.\n");
-                            closesocket(readable_fds.fd_array[i]);
-                        }
-                    }
-                } else {
-//                    Log::info(" fd:%d, acceptSocket:%d\n", readable_fds.fd_array[i], acceptSocket);
-                    if (to_be_checked_fds.fd_array[i] == acceptSocket) {
-                        continue;
-                    }
-
-                    Log::info(" socket:%d go to next iter.\n", to_be_checked_fds.fd_array[i]);
-                    // 该 socket 没有可读事件，放入到集合中，等待下次 select
-                    FD_SET(to_be_checked_fds.fd_array[i], &new_to_be_checked_fds);
                 }
             }
-        } else if (0 == iResult) {
-            // 超时
-            Log::info(" time out\n");
-        } else {
-            // 其它错误
-            Log::info(" select WSAError:%d\n", WSAGetLastError());
         }
-
-        // 设置下轮监听集合
-        to_be_checked_fds = new_to_be_checked_fds;
-        FD_SET(acceptSocket, &to_be_checked_fds);
     }
 }
 
 
-/**
- * 初始化 socket 调用环境
- */
-void MiniWebServer::initWSA() {
-    WORD wVersionRequested; // WORD 就是 unsigned short，无符号短整型
-    WSADATA wsaData;    // 一个结构体。这个结构被用来存储被 WSAStartup 函数调用后返回的 Windows Sockets 数据。
-    wVersionRequested = MAKEWORD(1, 1); // 将两个 byte 型合并成一个 word 型,一个在高8位(b),一个在低8位(a)。整数 1 是 byte 类型吗？
-
-    // 初始化套接字环境
-    int n = WSAStartup(wVersionRequested, &wsaData);  // 即WSA(Windows Sockets Asynchronous，Windows异步套接字)的启动命令
-    if (n != 0) {
-        int err = WSAGetLastError();
-        char msg[101] = {'\0'};
-        snprintf(msg, 100, "WSAStartup failed. err:%d\n", err);
-        Log::record(msg);
-        exit(-1);
-    }
-
-    // 检查是否初始化成功
-    if (LOBYTE(wsaData.wVersion) != 1 || HIBYTE(wsaData.wVersion) != 1) {
-        WSACleanup();   // 功能是终止 Winsock 2 DLL (Ws2_32.dll) 的使用
-        int err = WSAGetLastError();
-        char msg[101] = {'\0'};
-        snprintf(msg, 100, "WSAStartup failed. err:%d\n", err);
-        Log::record(msg);
-        exit(-1);
-    }
-}
 
 

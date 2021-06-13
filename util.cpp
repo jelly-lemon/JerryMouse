@@ -18,3 +18,4 @@ int get_logic_cores() {
 
     return -1;
 }
+
