@@ -14,12 +14,17 @@ endif()
 
 
 add_executable(main_v1 v1/main_v1.cpp)
-target_link_libraries(main_v1 wsock32.lib)
+target_link_libraries(main_v1 ws2_32.lib)
 
 add_executable(main_v2 v2/main_v2.cpp)
-target_link_libraries(main_v2 wsock32.lib)
+target_link_libraries(main_v2 ws2_32.lib)
 
 add_executable(main_v3 v3/main_v3.cpp)
+
+add_executable(main_v4 v4/main_v4.cpp)
+target_link_libraries(main_v4 ws2_32.lib)
+
+
 
 add_executable(test test.cpp)
 if(WIN32)

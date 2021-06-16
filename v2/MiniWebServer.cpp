@@ -1,12 +1,10 @@
 // 本文件包含了处理连接的子线程函数、MiniWebServer 类
 #pragma once
 
-#ifdef linux
-#include <sys/socket.h>
-#else
-#include <winsock2.h>
+#ifndef WIN32
+#error please use windows
 #endif
-
+#include <winsock2.h>
 #include <string>
 
 #include "../ThreadPool.cpp"
@@ -93,7 +91,7 @@ SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string i
         snprintf(msg, 100, "now, you can visit http://localhost:%d to browse homepage.\n", port);
     }
     Log::record(msg);
-    snprintf(msg, 100, "web_root dir is %s\n", HttpResponse::rootDir.c_str());
+    snprintf(msg, 100, "web_root dir is %s\n", IOCPHttpResponse::rootDir.c_str());
     Log::record(msg);
     Log::record("waiting for connection...\n");
 

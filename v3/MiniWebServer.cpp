@@ -1,24 +1,16 @@
 // 本文件包含了处理连接的子线程函数、MiniWebServer 类
 #pragma once
 
-
-#ifdef linux
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <asm-generic/ioctls.h>
 #include <sys/epoll.h>
-#define SOCKET int
-#elif win
-#error windows not suppport epoll!
-#else
-#error unsupported os, only windows and linux are suppoted!
-#endif
-
 #include <string>
 #include <fcntl.h>
 #include "../ThreadPool.cpp"
 
+#define SOCKET int
 #define MAX_EVENTS 10
 
 using namespace std;
@@ -100,7 +92,7 @@ SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string i
         snprintf(msg, 100, "now, you can visit http://localhost:%d to browse homepage.\n", port);
     }
     Log::record(msg);
-    snprintf(msg, 100, "web_root dir is %s\n", HttpResponse::rootDir.c_str());
+    snprintf(msg, 100, "web_root dir is %s\n", IOCPHttpResponse::rootDir.c_str());
     Log::record(msg);
     Log::record("waiting for connection...\n");
 

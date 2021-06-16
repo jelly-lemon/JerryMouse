@@ -3,7 +3,7 @@
 
 #include <pthread.h>
 #include <winsock2.h>
-#include "HttpResponse.cpp"
+#include "IOCPHttpResponse.cpp"
 #include "TaskQueue.cpp"
 
 using namespace std;
@@ -116,7 +116,7 @@ void ThreadPool::onWorkerFinished() {
 
 
 void ThreadPool::handleSocket(SOCKET connSocket) {
-    HttpResponse response(connSocket);
+    IOCPHttpResponse response(connSocket);
     response.handleRequest();
 }
 

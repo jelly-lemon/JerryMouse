@@ -3,8 +3,8 @@
 
 #include <string>
 #include <winsock2.h>
-#include "Log.cpp"
-#include "HttpResponse.cpp"
+#include "../Log.cpp"
+#include "../IOCPHttpResponse.cpp"
 
 using namespace std;
 
@@ -96,7 +96,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
         snprintf(msg, 100, "now, you can visit http://localhost:%d to browse homepage.\n", port);
     }
     Log::record(msg);
-    snprintf(msg, 100, "web_root dir is %s\n", HttpResponse::rootDir.c_str());
+    snprintf(msg, 100, "web_root dir is %s\n", IOCPHttpResponse::rootDir.c_str());
     Log::record(msg);
     Log::record("waiting for connection...\n");
     while (1) {
@@ -125,7 +125,7 @@ void *MiniWebServer::handle_connection_main(void *args) {
     SOCKET connSocket = *(SOCKET *)args;
 
     // 对客户端请求进行响应
-    HttpResponse response(connSocket);
+    IOCPHttpResponse response(connSocket);
     response.handleRequest();
 
     return NULL;

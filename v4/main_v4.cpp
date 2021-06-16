@@ -1,15 +1,14 @@
+#ifndef WIN32
+#error only Windows support IOCP.
+#endif
 #include <string>
 #include <getopt.h>
 #include "MiniWebServer.cpp"
-#include "HttpResponse.cpp"
 
 using namespace std;
 
 // 基础配置
-string IOCPHttpResponse::rootDir = "D:/0-2-CLion/MiniWebServer/web_root";   // 资源根目录
-
-
-
+string IOCPHttpResponse::rootDir = "D:/0-3-CLion/MiniWebServer/web_root";   // 资源根目录
 
 /**
  * 打印参数帮助信息
@@ -91,7 +90,7 @@ int main(int argc, char *argv[]) {
     }
 
     // 根据输入的参数启动服务端
-    MiniWebServer server;
+    MiniWebServer server(theadPoolSize);
     server.startServer(port, backlog, ip);
 
     return 0;

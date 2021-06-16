@@ -5,7 +5,7 @@
 using namespace std;
 
 // 基础配置
-string HttpResponse::rootDir = "D:/0-3-CLion/MiniWebServer/web_root";   // 资源根目录
+string IOCPHttpResponse::rootDir = "D:/0-3-CLion/MiniWebServer/web_root";   // 资源根目录
 
 
 
