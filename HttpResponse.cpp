@@ -15,7 +15,7 @@ using namespace std;
 /**
  * 对 HTTP 响应封装成类 HttpResponse
  */
-class BaseHttpResponse {
+class HttpResponse {
 private:
     // 响应行
     const string OK_200 = "HTTP/1.1 200 OK\r\n";
@@ -31,21 +31,21 @@ private:
     virtual int httpSend(const string &responseLine, const string &responseBody, const string &contentType);
 
 
-
     void initDefaultHeader();
 
-    int closeSocket();
 
     void handlePost(HttpRequest &request);
 
     void handleGet(HttpRequest &request);
 
+
 protected:
     void setHeader(const string &key, const string &value);
+
     string getStrHeader();
 
 public:
-    explicit BaseHttpResponse(SOCKET &connSocket) : connSocket(connSocket) {
+    explicit HttpResponse(SOCKET &connSocket) : connSocket(connSocket) {
         initDefaultHeader();
         clientIPport = getClientIPPort(connSocket);
     }
@@ -59,6 +59,9 @@ public:
     void handleRequest(HttpRequest &request);
 
     string getIP_port();
+
+    static int closeSocket(SOCKET &connSocket);
+
 };
 
 
@@ -69,7 +72,7 @@ public:
  * @param recvTimeout 读取超时返回时间，单位是毫秒
  * @return 客户端发过来的原始字符串
  */
-string BaseHttpResponse::getRequestData(int recvTimeout) {
+string HttpResponse::getRequestData(int recvTimeout) {
     const int len = 1024;
     char buf[len];
     int code;
@@ -118,15 +121,16 @@ string BaseHttpResponse::getRequestData(int recvTimeout) {
 /**
  * 处理 get 请求
  */
-void BaseHttpResponse::handleGet(HttpRequest &request) {
+void HttpResponse::handleGet(HttpRequest &request) {
     string url = request.getURL();
     string responseContentType("text/plain; charset=UTF-8");
 
     // 判断请求 URL
     if (url == "/") {
-        // 默认 / 就是 /home.html
-        url = "/home.html";
-    } else if (url == "/hello") {
+        url = "/home.html";         // 默认 / 就是 /home.html
+    }
+
+    if (url == "/hello") {
         // 打招呼
         httpSend(OK_200, "Nice to meet you!", responseContentType);
     } else if (url == "/time") {
@@ -169,14 +173,14 @@ void BaseHttpResponse::handleGet(HttpRequest &request) {
 /**
  * 处理 POST 请求
  */
-void BaseHttpResponse::handlePost(HttpRequest &request) {
+void HttpResponse::handlePost(HttpRequest &request) {
     string url = request.getURL();
     string contentType("text/plain; charset=UTF-8");
     httpSend(OK_200, "POST request received.", contentType);
 }
 
 
-void BaseHttpResponse::handleRequest(HttpRequest &request) {
+void HttpResponse::handleRequest(HttpRequest &request) {
     if (request.getMethod() == "GET") {
         handleGet(request);
     } else if (request.getMethod() == "POST") {
@@ -189,7 +193,7 @@ void BaseHttpResponse::handleRequest(HttpRequest &request) {
  *
  * @param rawData: 若 rawData 为空串，则会调用 recv 尝试读取
  */
-void BaseHttpResponse::handleRequest(string rawData) {
+void HttpResponse::handleRequest(string rawData) {
     do {
         // 若 rawData 为空，则尝试读取
         if (rawData.empty()) {
@@ -197,13 +201,13 @@ void BaseHttpResponse::handleRequest(string rawData) {
                 // 读取客户端数据
                 rawData = getRequestData(-1);
             } catch (exception &e) {
-                Log::info("[tid %d][socket %s] getRequestData err, %s\n", GetCurrentThreadId(), clientIPport.c_str(),
-                          e.what());
+                err("[socket %s] getRequestData err, %s\n", GetCurrentThreadId(),
+                    clientIPport.c_str(),
+                    e.what())
                 break;
             }
         }
-        Log::info("[tid %d][socket %s] request:\n%s\n", GetCurrentThreadId(), clientIPport.c_str(),
-                  rawData.c_str());
+        info("[socket %s] request\n%s\n", clientIPport.c_str(), rawData.c_str())
 
         // 进行响应
         try {
@@ -212,28 +216,33 @@ void BaseHttpResponse::handleRequest(string rawData) {
             handleRequest(request);
         } catch (exception &e) {
             // 遇到任何 socket 异常就跳出循环
-            Log::info("[tid %d][socket %s] recv err, %s\n", GetCurrentThreadId(), clientIPport.c_str(), e.what());
+            err("[socket %s] recv err, %s\n", clientIPport.c_str(), e.what())
             break;
         }
+        return;
     } while (0);
 
     // 关闭连接
-    closeSocket();
+    closeSocket(connSocket);
 }
 
-int BaseHttpResponse::closeSocket() {
-    // 关闭连接
+/**
+ * 关闭 socket
+ *
+ * @param connSocket
+ * @return
+ */
+int HttpResponse::closeSocket(SOCKET &connSocket) {
+    string strIpPort = getClientIPPort(connSocket);
     int n = closesocket(connSocket);
     if (n == SOCKET_ERROR) {
-        Log::info("[socket %s] close socket err, %s\n", clientIPport.c_str(),
-                  getWSAErrorInfo().c_str());
+        err("[socket %s] close socket err, %s\n", strIpPort.c_str(), getWSAErrorInfo().c_str());
     } else {
-        Log::info("[socket %s] we closed socket.\n", clientIPport.c_str());
+        info("[socket %s] we closed socket.\n", strIpPort.c_str());
     }
 
     return n;
 }
-
 
 
 /**
@@ -244,7 +253,7 @@ int BaseHttpResponse::closeSocket() {
  * @param contentType 响应体数据类型
  * @return 发送数据的字节数
  */
-int BaseHttpResponse::httpSend(const string &responseLine, const string &responseBody, const string &contentType) {
+int HttpResponse::httpSend(const string &responseLine, const string &responseBody, const string &contentType) {
     // 在 Header 中添加 body 类型和长度信息
     setHeader("Content-Length", to_string(responseBody.length()));
     setHeader("Content-Type", contentType);
@@ -261,7 +270,7 @@ int BaseHttpResponse::httpSend(const string &responseLine, const string &respons
         snprintf(msg, 1023, "response failed, %s", getWSAErrorInfo().c_str());
         throw SocketException(msg);
     }
-    Log::info("[tid %d][reply %s]\n%s\n", GetCurrentThreadId(), clientIPport.c_str(), sendData.c_str());
+    info("[tid %d][reply %s]\n%s\n", GetCurrentThreadId(), clientIPport.c_str(), sendData.c_str());
 
     return n;
 }
@@ -269,7 +278,7 @@ int BaseHttpResponse::httpSend(const string &responseLine, const string &respons
 /**
  * 添加响应头
  */
-void BaseHttpResponse::setHeader(const string &key, const string &value) {
+void HttpResponse::setHeader(const string &key, const string &value) {
     if (key.empty())
         return;
     responseHeader[key] = value;
@@ -278,7 +287,7 @@ void BaseHttpResponse::setHeader(const string &key, const string &value) {
 /**
  * 响应头 map 转字符串
  */
-string BaseHttpResponse::getStrHeader() {
+string HttpResponse::getStrHeader() {
     string sendHeader;
     map<string, string>::iterator iter;
     for (iter = responseHeader.begin(); iter != responseHeader.end(); iter++) {
@@ -289,21 +298,21 @@ string BaseHttpResponse::getStrHeader() {
     return sendHeader;
 }
 
-string BaseHttpResponse::getIP_port() {
+string HttpResponse::getIP_port() {
     return clientIPport;
 }
 
 /**
  * 设置默认响应头
  */
-void BaseHttpResponse::initDefaultHeader() {
+void HttpResponse::initDefaultHeader() {
     setHeader("Connection", "close");   // 短连接
 }
 
 /**
  * 发送 404 page
  */
-void BaseHttpResponse::send404Page() {
+void HttpResponse::send404Page() {
     string data = "<!DOCTYPE html>\n"
                   "<html lang=\"en\">\n"
                   "<head>\n"

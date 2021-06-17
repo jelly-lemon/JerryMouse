@@ -11,9 +11,11 @@
 #include <pthread.h>    // 操作系统提供的头文件
 #include <fstream>
 #include <io.h>
-// #include <fileapi.h>
 #include <list>
 #include <windows.h>
+
+
+
 
 using namespace std;
 
@@ -46,10 +48,36 @@ public:
 
     static string getString(const char *format, va_list arg);
 
-    static void info(const char *format, ...);
+    static void log(ostream out, const char *format, ...);
 
     static string getPrefix();
+
+    static string getFormattedStr(const char *format, ...);
+
+    static void log(ostream *out, string &s);
 };
+
+/**
+ * 打印 Info
+ */
+#define info(...) {\
+    string sPrefix = Log::getPrefix();\
+    string info = Log::getFormattedStr(__VA_ARGS__);\
+    string s = Log::getFormattedStr("%s%s", sPrefix.c_str(), info.c_str());\
+    Log::log(&cout, s);\
+}
+
+/**
+ * 打印 Error
+ */
+#define err(...) {\
+    string sPrefix = Log::getPrefix();\
+    string lineInfo = Log::getFormattedStr("(%s:%d)", __FILE__, __LINE__);\
+    string errInfo = Log::getFormattedStr(__VA_ARGS__);\
+    string s = Log::getFormattedStr("%s%s%s", sPrefix.c_str(), lineInfo.c_str(), errInfo.c_str());\
+    Log::log(&cerr, s);\
+}
+
 
 /**
  * 初始化日志模块
@@ -128,9 +156,18 @@ void Log::print(string msg, bool printTime) {
     pthread_mutex_unlock(&printLock);
 }
 
+string Log::getFormattedStr(const char* format, ...) {
+    va_list arg;
+    va_start(arg, format);
+    string s = getString(format, arg);
+    va_end(arg);
+
+    return s;
+}
+
 string Log::getString(const char *format, va_list arg) {
     int done;
-    const int len = 104; // 字符数组长度
+    const int len = 1024; // 字符数组长度
     char msg[len];
 
     // 【易错点】要用 vsnprintf，不能用 snprintf
@@ -149,11 +186,23 @@ string Log::getString(const char *format, va_list arg) {
         msg[done] = '\0';
     }
 
-    return string(msg);
+    string formattedStr = string(msg);
+    return formattedStr;
 }
 
-void Log::info(const char *format, ...) {
+void Log::log(ostream *out, string &s) {
+    pthread_mutex_lock(&printLock);
+    *out << s << std::flush;;
+    pthread_mutex_unlock(&printLock);
 
+    // 写入文件
+    if (isWriteToFile) {
+        write(s);
+    }
+}
+
+
+void Log::log(ostream out, const char *format, ...) {
     // 获取格式化后的字符串
     va_list arg;
     va_start(arg, format);
@@ -162,7 +211,7 @@ void Log::info(const char *format, ...) {
 
     // 打印字符串
     string sPrefix = getPrefix();
-    cout << sPrefix << s << std::flush;;
+    out << sPrefix << s << std::flush;;
 
     // 写入文件
     if (isWriteToFile) {

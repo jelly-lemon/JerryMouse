@@ -70,9 +70,9 @@ SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string i
     n = bind(acceptSocket, (sockaddr *) &addrSrv, sizeof(sockaddr));
     if (n == -1) {
         if (errno == EADDRINUSE) {
-            Log::info("port %d is in use, can't bind\n", port);
+            Log::log("port %d is in use, can't bind\n", port);
         } else {
-            Log::info("can't bind socket at %s:%d, error code:%d\n", ip.c_str(), port, errno);
+            Log::log("can't bind socket at %s:%d, error code:%d\n", ip.c_str(), port, errno);
         }
         // TODO 退出时要保证最后一条日志正常写入文件
         exit(0);
@@ -117,7 +117,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
 
     int epfd = epoll_create(MAX_EVENTS);
     if (epfd == -1) {
-        Log::info("epoll_create failed, err:%d\n", errno);
+        Log::log("epoll_create failed, err:%d\n", errno);
         exit(EXIT_FAILURE);
     }
     struct epoll_event ev, events[MAX_EVENTS];
@@ -128,7 +128,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     while (1) {
         int nfds = epoll_wait(epfd, events, MAX_EVENTS, -1);
         if (nfds == -1) {
-            Log::info("epoll_wait failed, errno:%d\n", errno);
+            Log::log("epoll_wait failed, errno:%d\n", errno);
             exit(EXIT_FAILURE);
         }
         for (int i = 0; i < nfds; i++) {

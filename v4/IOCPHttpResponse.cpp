@@ -3,9 +3,9 @@
 
 #include <winsock2.h>
 #include <map>
-#include "Exception.cpp"
-#include "util.cpp"
-#include "BaseHttpResponse.cpp"
+#include "../Exception.cpp"
+#include "../util.cpp"
+#include "../HttpResponse.cpp"
 
 using namespace std;
 
@@ -27,7 +27,6 @@ enum IO_OPERATION {
 struct IO_DATA {
     OVERLAPPED Overlapped; // 必须为第一个成员
     WSABUF wsabuf;
-    DWORD nBytes;
     IO_OPERATION opCode;
     SOCKET client;
 };
@@ -35,16 +34,16 @@ struct IO_DATA {
 /**
  * 对 HTTP 响应封装成类 HttpResponse
  */
-class IOCPHttpResponse : public BaseHttpResponse {
+class IOCPHttpResponse : public HttpResponse {
 private:
-    IO_DATA *lpIOContext = NULL;
+    IO_DATA *lpData = NULL;
 
 
     int httpSend(const string &responseLine, const string &responseBody, const string &contentType);
 
 public:
-    IOCPHttpResponse(IO_DATA *lpIOContext) : BaseHttpResponse(lpIOContext->client),
-                                             lpIOContext(lpIOContext) {
+    IOCPHttpResponse(IO_DATA *lpData) : HttpResponse(lpData->client),
+                                        lpData(lpData) {
 
     }
 };
@@ -68,13 +67,21 @@ int IOCPHttpResponse::httpSend(const string &responseLine, const string &respons
     string sendData = responseLine + sendHeader + responseBody;
 
     // 发送数据到客户端
+    delete[] lpData->wsabuf.buf;  // 删除接收缓存
+    lpData->wsabuf.buf = new char[sendData.length() + 1];
+    lpData->wsabuf.len = sendData.length() + 1;
+    memset(lpData->wsabuf.buf, '\0', lpData->wsabuf.len);
+    strcpy(lpData->wsabuf.buf, sendData.c_str());
     DWORD dwFlags = 0;
-    int n = WSASend(lpIOContext->client, &lpIOContext->wsabuf, 1, &lpIOContext->nBytes,
-                    dwFlags, &(lpIOContext->Overlapped), NULL);
+    int n = WSASend(lpData->client, &lpData->wsabuf, 1, NULL,
+                    dwFlags, &(lpData->Overlapped), NULL);
+
     if (n == SOCKET_ERROR and WSAGetLastError() != ERROR_IO_PENDING) {
         char msg[1024] = {'\0'};
         snprintf(msg, 1023, "response failed, %s", getWSAErrorInfo().c_str());
         throw SocketException(msg);
+    } else {
+        info("[socket %s] reply\n%s\n", getClientIPPort(lpData->client).c_str(), lpData->wsabuf.buf);
     }
 
     return n;

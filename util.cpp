@@ -5,6 +5,7 @@
 
 #include <fstream>
 #include <sstream>
+#include "Log.cpp"
 
 /**
  * 获取 CPU 物理核心数
@@ -22,6 +23,32 @@ int get_logic_cores() {
     return -1;
 }
 
+
+
+/**
+ * 获取 SOCKET 出错信息
+ */
+string getWSAErrorInfo() {
+    int err_code = WSAGetLastError();
+    string err_info("WSAError:");
+    switch (err_code) {
+        case WSAEADDRINUSE:
+            err_info += "port is in use, can't bind";
+            break;
+        case WSAENOTSOCK:
+            err_info += "Socket operation on nonsocket";
+            break;
+        case WSAETIMEDOUT:
+            err_info += "recv timeout";
+            break;
+        default:
+            err_info += to_string(err_code);
+            break;
+    }
+
+    return err_info;
+}
+
 /**
  * 获取客户端 IP 和端口号
  */
@@ -37,33 +64,41 @@ string getClientIPPort(SOCKET &connSocket) {
         clientIPport = string(info);
     } else {
         // clientIPport 为空串说明服务端尝试读取 socket 时，此 socket 已经被客户端关闭了
-        int errorCode = WSAGetLastError();
-        char msg[100];
-        sprintf_s(msg, "getpeername ERROR:%d", errorCode);
-        clientIPport = msg;
+        clientIPport = "getClientIPPort failed, " + getWSAErrorInfo();
     }
+
     return clientIPport;
 }
 
+
 /**
- * 获取 SOCKET 出错信息
+ * 初始化 socket 调用环境
  */
-string getWSAErrorInfo() {
-    int err_code = WSAGetLastError();
-    string err_info("WSAError:");
-    switch (err_code) {
-        case 10060:
-            err_info += "recv timeout";
-            break;
-        default:
-            err_info += to_string(err_code);
-            break;
-    }
+void initWSA(int a=2, int b=2) {
+    WORD wVersionRequested; // WORD 就是 unsigned short，无符号短整型
+    WSADATA wsaData;    // 一个结构体。这个结构被用来存储被 WSAStartup 函数调用后返回的 Windows Sockets 数据。
+    wVersionRequested = MAKEWORD(a, b); // 将两个 byte 型合并成一个 word 型,一个在高8位(b),一个在低8位(a)。整数 1 是 byte 类型吗？
 
-    return err_info;
+    // 初始化
+    do {
+        // 初始化套接字环境
+        int n = WSAStartup(wVersionRequested, &wsaData);  // 即WSA(Windows Sockets Asynchronous，Windows异步套接字)的启动命令
+        if (n != 0) {
+            break;
+        }
+
+        // 检查是否初始化成功
+        if (LOBYTE(wsaData.wVersion) != a || HIBYTE(wsaData.wVersion) != b) {
+            break;
+        }
+        return;
+    } while(0);
+
+    // 若初始化失败
+    WSACleanup();   // 功能是终止 Winsock 2 DLL (Ws2_32.dll) 的使用
+    err("WSAStartup failed, %s\n", getWSAErrorInfo().c_str())
+    exit(-1);
 }
-
-
 
 
 /**

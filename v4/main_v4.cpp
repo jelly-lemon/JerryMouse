@@ -8,7 +8,7 @@
 using namespace std;
 
 // 基础配置
-string IOCPHttpResponse::rootDir = "D:/0-3-CLion/MiniWebServer/web_root";   // 资源根目录
+string HttpResponse::rootDir = "D:/0-2-CLion/MiniWebServer/web_root";   // 资源根目录
 
 /**
  * 打印参数帮助信息
@@ -28,7 +28,7 @@ void printUsage() {
 
 int main(int argc, char *argv[]) {
     // 默认参数
-    printUsage();               // 打印参数使用方法
+//    printUsage();               // 打印参数使用方法
     string ip = "0.0.0.0";      // 监听 IP
     int port = 80;              // 端口
     int backlog = 99999;         // accept 队列大小
@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
     }
 
     // 根据输入的参数启动服务端
-    MiniWebServer server(theadPoolSize);
+    MiniWebServer server;
     server.startServer(port, backlog, ip);
 
     return 0;
