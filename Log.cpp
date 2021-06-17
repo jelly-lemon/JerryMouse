@@ -1,19 +1,20 @@
 /**
  * 日志类
  *
- * 主要功能：输出日志到控制台和日志文件
+ * 主要功能：
+ * 输出日志到控制台和日志文件
  */
 
 #pragma once
 
 #include <iostream>
 #include <ctime>
-#include <pthread.h>    // 操作系统提供的头文件
+#include <pthread.h>
 #include <fstream>
 #include <io.h>
 #include <list>
 #include <windows.h>
-
+#include "MsgQueue.cpp"
 
 
 
@@ -23,20 +24,18 @@ class Log {
 private:
     static pthread_mutex_t writeLock;   // 写文件互斥锁
     static pthread_mutex_t printLock;   // 打印互斥锁
-    static list <string> msgList;       // 消息队列
+    static MsgQueue msgQueue;       // 消息队列
     static bool writeThreadIsRunning;
     static string logDir;               // 日志目录
 
     static bool isWriteToFile;
 
 public:
-    static void init();
+    void init();
 
     static void write(string msg, bool printTime = true);
 
-    static void debug();
-
-    static void print(string msg, bool printTime = true);
+    static void print(ostream *pOut, string msg);
 
     static void record(string msg, bool printTime = true);
 
@@ -55,10 +54,12 @@ public:
     static string getFormattedStr(const char *format, ...);
 
     static void log(ostream *out, string &s);
+
+    void startWriteFileThread();
 };
 
 /**
- * 打印 Info
+ * Info 打印
  */
 #define info(...) {\
     string sPrefix = Log::getPrefix();\
@@ -68,7 +69,13 @@ public:
 }
 
 /**
- * 打印 Error
+ * TODO Debug 打印
+ */
+#define debug(...) {\
+}
+
+/**
+ * Error 打印
  */
 #define err(...) {\
     string sPrefix = Log::getPrefix();\
@@ -83,31 +90,39 @@ public:
  * 初始化日志模块
  */
 void Log::init() {
-    // 启动日志线程
+    startWriteFileThread();
 }
+
+/**
+ * 启动写文件线程
+ */
+void Log::startWriteFileThread() {
+
+}
+
 
 /**
  * 线程函数，从消息队列中取消息，然后写入文件
  */
 void *Log::t_write(void *args) {
     while (1) {
-        // 判断当前消息队列是否有消息
-        if (msgList.size() > 0) {
-            // 获取队首元素
-            string msg = msgList.front();
-            msgList.pop_front();
-            string filePath = getLogFilePath();
-            // 【难点】要以二进制格式写入，不然 \r\n 会被写成 \r\r\n
-            // 以二进制格式写入，\r\n 就原模原样写入
-            ofstream logFile(filePath, ios::app | ios::binary);   // 打开文件
-            if (logFile) {
-                logFile << msg;
-            }
-            logFile.close();    // 关闭文件
+        // 取数据，若没有数据，阻塞等待
+        string msg = msgQueue.get();
+
+        // 获取日志文件路径
+        string filePath = getLogFilePath();
+
+        // 写入文件
+        // 【易错点】要以二进制格式写入，不然 \r\n 会被写成 \r\r\n
+        // 以二进制格式写入，\r\n 就原模原样写入
+        ofstream logFile(filePath, ios::app | ios::binary);   // 打开文件
+        if (logFile) {
+            logFile << msg;
         } else {
-            // 消息队列无内容则挂起 0.1s
-            Sleep(100);
+            // 文件不存在
+            print(&cerr, "文件创建失败:" + filePath);
         }
+        logFile.close();    // 关闭文件
     }
 }
 
@@ -133,29 +148,26 @@ void Log::write(string msg, bool printTime) {
 
     // 添加信息到消息队列
     pthread_mutex_lock(&writeLock);
-    msgList.push_back(msg); // 添加到消息队列
+    msgQueue.push_back(msg); // 添加到消息队列
     pthread_mutex_unlock(&writeLock);
 }
 
 /**
  * 输出到控制台
- *
- * @param msg: 信息
- * @param printTime: 是否打印时间
  */
-void Log::print(string msg, bool printTime) {
-    // 添加时间标记
-    if (printTime) {
-        string sTime = "[" + getCurrentTime() + "]";
-        msg = sTime + msg;
-    }
+void Log::print(ostream *pOut, string msg) {
+    string sPrefix = getPrefix();
 
     // 输出到控制台
-    pthread_mutex_lock(&printLock);
-    cout << msg << std::flush;  // 刷新缓冲区
-    pthread_mutex_unlock(&printLock);
+    *pOut << sPrefix << msg << std::flush;  // 刷新缓冲区
 }
 
+/**
+ * 获取格式化后的字符串
+ *
+ * @param format 格式
+ * @param ... 参数
+ */
 string Log::getFormattedStr(const char* format, ...) {
     va_list arg;
     va_start(arg, format);
@@ -165,18 +177,25 @@ string Log::getFormattedStr(const char* format, ...) {
     return s;
 }
 
+/**
+ * 获取格式化后的字符串，代码中做了长度限制，格式化后的字符串最长 1000
+ *
+ * @param format 格式
+ * @param arg 变参指针
+ */
 string Log::getString(const char *format, va_list arg) {
     int done;
     const int len = 1024; // 字符数组长度
     char msg[len];
 
+    // 格式化
     // 【易错点】要用 vsnprintf，不能用 snprintf
     // 带 v 的都是使用变量 va_list 传递变参
     // 如果格式化后的字符串长度超过 10，则会被截断，并返回 -1
     // 减 4 表示给省略号和\0的位置，即:"...\0"的位置
     done = vsnprintf(msg, len-4, format, arg);
 
-    // 字符串过长时，用省略号表示
+    // 字符串长度超过 len-4 时，最后面省略号表示
     if (done == -1) {
         for (int i = 1; i <= 3; i++) {
             msg[len-1-i] = '.';
@@ -201,7 +220,13 @@ void Log::log(ostream *out, string &s) {
     }
 }
 
-
+/**
+ * 打日志
+ *
+ * @param out 输出对象，cout / cerr
+ * @param format 格式
+ * @param ... 参数
+ */
 void Log::log(ostream out, const char *format, ...) {
     // 获取格式化后的字符串
     va_list arg;
@@ -219,8 +244,14 @@ void Log::log(ostream out, const char *format, ...) {
     }
 }
 
+/**
+ * 获取日志前缀
+ */
 string Log::getPrefix() {
+    // 时间
     string sTime = "[" + getCurrentTime() + "]";
+
+    // 线程 id
     char sTid[21];
     snprintf(sTid, 20, "[tid %d]", GetCurrentThreadId());
 
@@ -263,7 +294,10 @@ string Log::getLogFilePath() {
 
     // 创建日志目录
     string logDir("./log");
-    CreateDirectory(logDir.c_str(), NULL);  // 创建目录（该函数不可递归，只能创建终极目录）
+    int nRet = CreateDirectory(logDir.c_str(), NULL);  // 创建目录（该函数不可递归，只能创建终极目录）
+    if (nRet == 0) {
+        err("CreateDirectory: %s failed\n", logDir.c_str());
+    }
 
     // 返回日志文件路径
     string logPath = logDir + "/" + fileName;
@@ -272,8 +306,6 @@ string Log::getLogFilePath() {
 
 /**
  * 获取当前时间
- *
- * @return 当前时间，字符串
  */
 string Log::getCurrentTime() {
     char s[100];
@@ -281,7 +313,7 @@ string Log::getCurrentTime() {
     struct tm *lt;
 
     // 获取当前时间，精度到秒
-    time(&t); // t = time(NULL) 也可以
+    time(&t);           // t = time(NULL) 也可以
     lt = localtime(&t); // 转为本时区时间
 
     // 格式化时间
@@ -296,8 +328,6 @@ string Log::getCurrentTime() {
  */
 pthread_mutex_t Log::writeLock;
 pthread_mutex_t Log::printLock;
-list <string> Log::msgList;
+list <string> Log::msgQueue;
 bool Log::writeThreadIsRunning = false;
 bool Log::isWriteToFile = false;
-
-
