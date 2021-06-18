@@ -44,7 +44,7 @@ void MiniWebServer::showAcceptSocketInfo(SOCKET acceptSocket) {
     getsockname(acceptSocket, (struct sockaddr *) &socketAddr, &len);
     char msg[100];
     sprintf(msg, "server listen at %s:%d\n", inet_ntoa(socketAddr.sin_addr), ntohs(socketAddr.sin_port));
-    Log::record(msg);
+    Logger::record(msg);
 }
 
 SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string ip) {
@@ -72,7 +72,7 @@ SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string i
         } else {
             snprintf(msg, 100, "can't bind socket at %s:%d, WSA error code:%d\n", ip.c_str(), port, error_code);
         }
-        Log::record(msg);
+        Logger::record(msg);
         WSACleanup();
         exit(-1);
     }
@@ -83,17 +83,17 @@ SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string i
 
     char msg[101] = {'\0'};
     snprintf(msg, 100, "max accept socket number is %d\n", maxSocketNumber);
-    Log::record(msg);
+    Logger::record(msg);
     showAcceptSocketInfo(acceptSocket);
     if (port == 80) {
         snprintf(msg, 100, "now, you can visit http://localhost to browse homepage.\n");
     } else {
         snprintf(msg, 100, "now, you can visit http://localhost:%d to browse homepage.\n", port);
     }
-    Log::record(msg);
+    Logger::record(msg);
     snprintf(msg, 100, "web_root dir is %s\n", IOCPHttpResponse::rootDir.c_str());
-    Log::record(msg);
-    Log::record("waiting for connection...\n");
+    Logger::record(msg);
+    Logger::record("waiting for connection...\n");
 
     return acceptSocket;
 }
@@ -136,13 +136,13 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
         readable_fds = to_be_checked_fds;
         exceptional_fds = to_be_checked_fds;
         int len = readable_fds.fd_count;
-        Log::log("before select:");
+        Logger::log("before select:");
         for (i = 0; i < len; i++) {
             printf("%d ", readable_fds.fd_array[i]);
         }
         cout << endl;
         iResult = select(0, &readable_fds, NULL, &exceptional_fds,/*&tm*/NULL);
-        Log::log("after select:");
+        Logger::log("after select:");
         for (i = 0; i < len; i++) {
             printf("%d ", readable_fds.fd_array[i]);
         }
@@ -152,13 +152,13 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
             // 遍历每一个 socket，检查是否可读
             for (i = 0; i < len; i++) {
                 if (FD_ISSET(to_be_checked_fds.fd_array[i], &exceptional_fds)) {
-                    Log::log("socket:%d err, WSAERROR:%D", to_be_checked_fds.fd_array[i], WSAGetLastError());
+                    Logger::log("socket:%d err, WSAERROR:%D", to_be_checked_fds.fd_array[i], WSAGetLastError());
                     continue;
                 }
 
                 // 该 socket 是否有可读事件
                 if (FD_ISSET(to_be_checked_fds.fd_array[i], &readable_fds)) {
-                    Log::log(" socket:%d is ok.\n", readable_fds.fd_array[i]);
+                    Logger::log(" socket:%d is ok.\n", readable_fds.fd_array[i]);
                     //如果是监听 socket，则接收连接
                     if (to_be_checked_fds.fd_array[i] == acceptSocket) {
                         sockaddr connAddr;
@@ -169,7 +169,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
 //                                Log::info(" WSAError:%d\n", WSAGetLastError());
                                 break;
                             }
-                            Log::log(" new socket:%d\n", connSocket);
+                            Logger::log(" new socket:%d\n", connSocket);
 
                             // 将新 socket 放入新集合
                             ioctlsocket(connSocket,FIONBIO, &ul);    //设置成非阻塞模式
@@ -179,7 +179,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
                         // 如果是连接 socket，则表明有可读事件
                         bool rt = threadPool.submit(readable_fds.fd_array[i]);
                         if (rt == false) {
-                            Log::log("submit failed, TaskQueue is full, close socket.\n");
+                            Logger::log("submit failed, TaskQueue is full, close socket.\n");
                             closesocket(readable_fds.fd_array[i]);
                         }
                     }
@@ -189,17 +189,17 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
                         continue;
                     }
 
-                    Log::log(" socket:%d go to next iter.\n", to_be_checked_fds.fd_array[i]);
+                    Logger::log(" socket:%d go to next iter.\n", to_be_checked_fds.fd_array[i]);
                     // 该 socket 没有可读事件，放入到集合中，等待下次 select
                     FD_SET(to_be_checked_fds.fd_array[i], &new_to_be_checked_fds);
                 }
             }
         } else if (0 == iResult) {
             // 超时
-            Log::log(" time out\n");
+            Logger::log(" time out\n");
         } else {
             // 其它错误
-            Log::log(" select WSAError:%d\n", WSAGetLastError());
+            Logger::log(" select WSAError:%d\n", WSAGetLastError());
         }
 
         // 设置下轮监听集合
@@ -223,7 +223,7 @@ void MiniWebServer::initWSA() {
         int err = WSAGetLastError();
         char msg[101] = {'\0'};
         snprintf(msg, 100, "WSAStartup failed. err:%d\n", err);
-        Log::record(msg);
+        Logger::record(msg);
         exit(-1);
     }
 
@@ -233,7 +233,7 @@ void MiniWebServer::initWSA() {
         int err = WSAGetLastError();
         char msg[101] = {'\0'};
         snprintf(msg, 100, "WSAStartup failed. err:%d\n", err);
-        Log::record(msg);
+        Logger::record(msg);
         exit(-1);
     }
 }

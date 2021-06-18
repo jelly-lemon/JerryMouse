@@ -15,7 +15,6 @@
 #include <list>
 #include <mutex>
 #include <winsock2.h>
-#include "Log.cpp"
 using namespace std;
 
 class TaskQueue {
@@ -59,7 +58,6 @@ public:
             return x;
         }
     }
-
 };
 
 

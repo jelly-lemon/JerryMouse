@@ -52,7 +52,7 @@ public:
  * 子线程函数
  */
 void *ThreadPool::worker_main(void *args) {
-    Log::log(" new worker\n");
+    Logger::log(" new worker\n");
 
     auto *p_threadPool = (ThreadPool *)args;
     while (true) {
@@ -61,7 +61,7 @@ void *ThreadPool::worker_main(void *args) {
             SOCKET connSocket = p_threadPool->getTask();
             ThreadPool::handleSocket(connSocket);
         } catch(exception &err) {
-            Log::log(" %s, thread finished.\n", err.what());
+            Logger::log(" %s, thread finished.\n", err.what());
             break;
         }
     }
@@ -78,7 +78,7 @@ void *ThreadPool::worker_main(void *args) {
  * @return: 提交成功或失败
  */
 bool ThreadPool::submit(SOCKET connSocket) {
-    Log::log(" submit: %d\n", connSocket);
+    Logger::log(" submit: %d\n", connSocket);
     if (tasksQueue.put(connSocket)) {
         lock_guard<mutex> guard(m_mutex);
         if (currentThreadNumber < poolSize) {

@@ -48,7 +48,7 @@ void MiniWebServer::showAcceptSocketInfo(SOCKET acceptSocket) {
     getsockname(acceptSocket, (struct sockaddr *) &socketAddr, &len);
     char msg[100];
     sprintf(msg, "server listen at %s:%d\n", inet_ntoa(socketAddr.sin_addr), ntohs(socketAddr.sin_port));
-    Log::record(msg);
+    Logger::record(msg);
 }
 
 SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string ip) {
@@ -70,9 +70,9 @@ SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string i
     n = bind(acceptSocket, (sockaddr *) &addrSrv, sizeof(sockaddr));
     if (n == -1) {
         if (errno == EADDRINUSE) {
-            Log::log("port %d is in use, can't bind\n", port);
+            Logger::log("port %d is in use, can't bind\n", port);
         } else {
-            Log::log("can't bind socket at %s:%d, error code:%d\n", ip.c_str(), port, errno);
+            Logger::log("can't bind socket at %s:%d, error code:%d\n", ip.c_str(), port, errno);
         }
         // TODO 退出时要保证最后一条日志正常写入文件
         exit(0);
@@ -84,17 +84,17 @@ SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string i
 
     char msg[101] = {'\0'};
     snprintf(msg, 100, "max accept socket number is %d\n", maxSocketNumber);
-    Log::record(msg);
+    Logger::record(msg);
     showAcceptSocketInfo(acceptSocket);
     if (port == 80) {
         snprintf(msg, 100, "now, you can visit http://localhost to browse homepage.\n");
     } else {
         snprintf(msg, 100, "now, you can visit http://localhost:%d to browse homepage.\n", port);
     }
-    Log::record(msg);
+    Logger::record(msg);
     snprintf(msg, 100, "web_root dir is %s\n", IOCPHttpResponse::rootDir.c_str());
-    Log::record(msg);
-    Log::record("waiting for connection...\n");
+    Logger::record(msg);
+    Logger::record("waiting for connection...\n");
 
     return acceptSocket;
 }
@@ -117,7 +117,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
 
     int epfd = epoll_create(MAX_EVENTS);
     if (epfd == -1) {
-        Log::log("epoll_create failed, err:%d\n", errno);
+        Logger::log("epoll_create failed, err:%d\n", errno);
         exit(EXIT_FAILURE);
     }
     struct epoll_event ev, events[MAX_EVENTS];
@@ -128,7 +128,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     while (1) {
         int nfds = epoll_wait(epfd, events, MAX_EVENTS, -1);
         if (nfds == -1) {
-            Log::log("epoll_wait failed, errno:%d\n", errno);
+            Logger::log("epoll_wait failed, errno:%d\n", errno);
             exit(EXIT_FAILURE);
         }
         for (int i = 0; i < nfds; i++) {

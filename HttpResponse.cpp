@@ -6,7 +6,7 @@
 #include <iostream>
 #include "HttpRequest.cpp"
 #include "Exception.cpp"
-#include "Log.cpp"
+#include "Logger.cpp"
 #include "util.cpp"
 
 using namespace std;
@@ -136,13 +136,13 @@ void HttpResponse::handleGet(HttpRequest &request) {
     } else if (url == "/time") {
         // 返回时间
         char msg[101] = {'\0'};
-        snprintf(msg, 100, "Server time is:%s\n", Log::getCurrentTime().c_str());
+        snprintf(msg, 100, "Server time is:%s\n", Logger::getCurrentTime().c_str());
         httpSend(OK_200, msg, responseContentType);
     } else {
         // 前面路径都匹配不上，此时尝试根据 URL 读取文件
         try {
             // 读取文件
-            string data = getFile(url);
+            string data = getFile(rootDir + url);
             string fileType = getFileType(url);
 
             // 如果是图片
@@ -162,8 +162,7 @@ void HttpResponse::handleGet(HttpRequest &request) {
         } catch (invalid_argument &e) {
             // 进入异常说明客户端请求既没有匹配的处理项，也没有对应的文件，就返回 404 页面
             char msg[101] = {'\0'};
-            snprintf(msg, 100, "[tid %d] %s\n", GetCurrentThreadId(), e.what());
-            Log::record(msg);
+            err(" %s\n", e.what())
             send404Page();
         }
     }

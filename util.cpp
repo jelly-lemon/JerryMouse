@@ -5,7 +5,7 @@
 
 #include <fstream>
 #include <sstream>
-#include "Log.cpp"
+#include "Logger.cpp"
 
 /**
  * 获取 CPU 物理核心数

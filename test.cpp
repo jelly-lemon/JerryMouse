@@ -1,5 +1,5 @@
 #include<iostream>
-#include "Log.cpp"
+#include "Logger.cpp"
 using namespace std;
 
 int main() {

@@ -3,7 +3,7 @@
 
 #include <string>
 #include <winsock2.h>
-#include "../Log.cpp"
+#include "../Logger.cpp"
 #include "../v4/IOCPHttpResponse.cpp"
 
 using namespace std;
@@ -41,7 +41,7 @@ void MiniWebServer::showAcceptSocketInfo(SOCKET acceptSocket) {
     getsockname(acceptSocket, (struct sockaddr *) &socketAddr, &len);
     char msg[100];
     sprintf(msg, "server listen at %s:%d\n", inet_ntoa(socketAddr.sin_addr), ntohs(socketAddr.sin_port));
-    Log::record(msg);
+    Logger::record(msg);
 }
 
 /**
@@ -76,7 +76,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
         } else {
             snprintf(msg, 100, "can't bind socket at %s:%d, WSA error code:%d\n", ip.c_str(), port, error_code);
         }
-        Log::record(msg);
+        Logger::record(msg);
         WSACleanup();
         system("pause");
         return;
@@ -88,17 +88,17 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     listen(acceptSocket, maxSocketNumber); // 开始监听请求
     char msg[101] = {'\0'};
     snprintf(msg, 100, "max accept socket number is %d\n", maxSocketNumber);
-    Log::record(msg);
+    Logger::record(msg);
     showAcceptSocketInfo(acceptSocket);
     if (port == 80) {
         snprintf(msg, 100, "now, you can visit http://localhost to browse homepage.\n");
     } else {
         snprintf(msg, 100, "now, you can visit http://localhost:%d to browse homepage.\n", port);
     }
-    Log::record(msg);
+    Logger::record(msg);
     snprintf(msg, 100, "web_root dir is %s\n", IOCPHttpResponse::rootDir.c_str());
-    Log::record(msg);
-    Log::record("waiting for connection...\n");
+    Logger::record(msg);
+    Logger::record("waiting for connection...\n");
     while (1) {
         SOCKADDR_IN addrClient;
         int len = sizeof(SOCKADDR);
@@ -145,7 +145,7 @@ void MiniWebServer::initWSA() {
         int err = WSAGetLastError();
         char msg[101] = {'\0'};
         snprintf(msg, 100, "WSAStartup failed. err:%d\n", err);
-        Log::record(msg);
+        Logger::record(msg);
         exit(-1);
     }
 
@@ -155,7 +155,7 @@ void MiniWebServer::initWSA() {
         int err = WSAGetLastError();
         char msg[101] = {'\0'};
         snprintf(msg, 100, "WSAStartup failed. err:%d\n", err);
-        Log::record(msg);
+        Logger::record(msg);
         exit(-1);
     }
 }
