@@ -19,7 +19,7 @@ class MiniWebServer {
 private:
     ThreadPool threadPool;  // 线程池对象
 
-    static void showAcceptSocketInfo(SOCKET acceptSocket);
+    static void showAcceptSocketIPPort(SOCKET acceptSocket);
 
 
 public:
@@ -38,7 +38,7 @@ public:
 /**
  * 打印 acceptSocket 监听的 IP 和端口
  */
-void MiniWebServer::showAcceptSocketInfo(SOCKET acceptSocket) {
+void MiniWebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
     struct sockaddr_in socketAddr;
     int len = sizeof(socketAddr);
     getsockname(acceptSocket, (struct sockaddr *) &socketAddr, &len);
@@ -84,7 +84,7 @@ SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string i
     char msg[101] = {'\0'};
     snprintf(msg, 100, "max accept socket number is %d\n", maxSocketNumber);
     Logger::record(msg);
-    showAcceptSocketInfo(acceptSocket);
+    showAcceptSocketIPPort(acceptSocket);
     if (port == 80) {
         snprintf(msg, 100, "now, you can visit http://localhost to browse homepage.\n");
     } else {

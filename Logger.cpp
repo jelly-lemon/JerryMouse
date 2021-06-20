@@ -11,10 +11,15 @@
 #include <ctime>
 #include <pthread.h>
 #include <fstream>
-#include <io.h>
-#include <windows.h>
 #include "MsgQueue.cpp"
 
+
+#ifdef linux
+#include <sys/io.h>
+#elif WIN32
+#include <windows.h>
+#include <io.h>
+#endif
 
 using namespace std;
 
@@ -53,6 +58,7 @@ public:
 
     static void log(ostream *pOut, string s);
 
+    static bool isWriteThreadWorking();
 };
 
 /**
@@ -99,6 +105,13 @@ void Logger::startWriteFileThread() {
     }
 }
 
+/**
+ * 获取写日志文件线程是否还在运行
+ */
+bool Logger::isWriteThreadWorking() {
+
+    return false;
+}
 
 /**
  * 线程函数，从消息队列中取消息，然后写入文件

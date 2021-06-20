@@ -80,7 +80,7 @@ DWORD WINAPI WorkerThread(LPVOID WorkThreadContext) {
 class MiniWebServer {
 private:
 
-    static string showAcceptSocketInfo(SOCKET acceptSocket);
+    static string showAcceptSocketIPPort(SOCKET acceptSocket);
 
 
 public:
@@ -97,7 +97,7 @@ public:
 /**
  * 打印 acceptSocket 监听的 IP 和端口
  */
-string MiniWebServer::showAcceptSocketInfo(SOCKET acceptSocket) {
+string MiniWebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
     struct sockaddr_in socketAddr;
     int len = sizeof(socketAddr);
     getsockname(acceptSocket, (struct sockaddr *) &socketAddr, &len);
@@ -143,7 +143,7 @@ SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string i
     // backlog 指全连接队列大小
     listen(acceptSocket, maxSocketNumber); // 开始监听请求
     info("max accept socket number is %d\n", maxSocketNumber)
-    showAcceptSocketInfo(acceptSocket);
+    showAcceptSocketIPPort(acceptSocket);
     if (port == 80) {
         info("now, you can visit http://localhost to browse homepage.\n")
     } else {

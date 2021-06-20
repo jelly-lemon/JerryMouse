@@ -10,9 +10,9 @@
 #include <fcntl.h>
 #include "../ThreadPool.cpp"
 
-#define SOCKET int
-#define MAX_EVENTS 10
 
+#define MAX_EVENTS 10
+typedef int SOCKET;
 using namespace std;
 
 
@@ -23,7 +23,7 @@ class MiniWebServer {
 private:
     ThreadPool threadPool;  // 线程池对象
 
-    static void showAcceptSocketInfo(SOCKET acceptSocket);
+    static void showAcceptSocketIPPort(SOCKET acceptSocket);
 
 
 public:
@@ -39,21 +39,28 @@ public:
 };
 
 
-/**
- * 打印 acceptSocket 监听的 IP 和端口
- */
-void MiniWebServer::showAcceptSocketInfo(SOCKET acceptSocket) {
-    sockaddr_in socketAddr;
-    socklen_t len = sizeof(socketAddr);
-    getsockname(acceptSocket, (struct sockaddr *) &socketAddr, &len);
-    char msg[100];
-    sprintf(msg, "server listen at %s:%d\n", inet_ntoa(socketAddr.sin_addr), ntohs(socketAddr.sin_port));
-    Logger::record(msg);
+
+void MiniWebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
+    string acceptIPPort = getAcceptIPPort(acceptSocket);
+    if (!acceptIPPort.empty()) {
+        info("server listen at %s\n", acceptIPPort.c_str())
+    } else {
+        err("can't get accept socket ip:port, Error: %s\n", acceptIPPort.c_str(), getErrorInfo().c_str())
+    }
 }
 
+/**
+ * 创建监听 socket
+ *
+ * @param port
+ * @param maxSocketNumber
+ * @param ip
+ */
 SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string ip) {
+    //
     // 创建监听 socket
-    sockaddr_in addrSrv;
+    //
+    sockaddr_in addrSrv = {};
     if (ip.empty() || ip == "0.0.0.0")
         addrSrv.sin_addr.s_addr = htonl(INADDR_ANY);   // INADDR_ANY 表示监听所有网卡，也就是本机所有 IP 地址
     else if (ip == "localhost" || ip == "127.0.0.1") {
@@ -65,36 +72,34 @@ SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string i
     addrSrv.sin_port = htons(port);
     SOCKET acceptSocket = socket(AF_INET, SOCK_STREAM, 0);
 
-    // 监听指定端口
-    int n;
-    n = bind(acceptSocket, (sockaddr *) &addrSrv, sizeof(sockaddr));
+    //
+    // 绑定监听端口
+    //
+    int n = bind(acceptSocket, (sockaddr *) &addrSrv, sizeof(sockaddr));
     if (n == -1) {
         if (errno == EADDRINUSE) {
-            Logger::log("port %d is in use, can't bind\n", port);
+            err("port %d is in use, can't bind\n", port);
         } else {
-            Logger::log("can't bind socket at %s:%d, error code:%d\n", ip.c_str(), port, errno);
+            err("can't bind socket at %s:%d, Error:%s\n", ip.c_str(), port, getErrorInfo().c_str())
         }
-        // TODO 退出时要保证最后一条日志正常写入文件
-        exit(0);
+        safeExit(-1);
     }
 
+    //
+    // 开始监听请求
+    //
     // 半连接（SYN_RCVD状态）队列大小和全连接（ESTABLISHED状态）队列大小
     // backlog 指全连接队列大小
-    listen(acceptSocket, maxSocketNumber); // 开始监听请求
-
-    char msg[101] = {'\0'};
-    snprintf(msg, 100, "max accept socket number is %d\n", maxSocketNumber);
-    Logger::record(msg);
-    showAcceptSocketInfo(acceptSocket);
+    listen(acceptSocket, maxSocketNumber);
+    info("max accept socket number is %d\n", maxSocketNumber);
+    showAcceptSocketIPPort(acceptSocket);
     if (port == 80) {
-        snprintf(msg, 100, "now, you can visit http://localhost to browse homepage.\n");
+        info("now, you can visit http://127.0.0.1 to browse homepage.\n");
     } else {
-        snprintf(msg, 100, "now, you can visit http://localhost:%d to browse homepage.\n", port);
+        info("now, you can visit http://127.0.0.1:%d to browse homepage.\n", port);
     }
-    Logger::record(msg);
-    snprintf(msg, 100, "web_root dir is %s\n", IOCPHttpResponse::rootDir.c_str());
-    Logger::record(msg);
-    Logger::record("waiting for connection...\n");
+    info("web_root dir is %s\n", IOCPHttpResponse::rootDir.c_str());
+    info("waiting for connection...\n");
 
     return acceptSocket;
 }
@@ -108,29 +113,37 @@ SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string i
  * @param maxSocketNumber 最大监听 socket 数量
 */
 void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
+    //
+    // 创建监听 socket
+    //
     SOCKET acceptSocket = createListenSocket(port, maxSocketNumber, ip);
-
     unsigned long ul=1;
-    // win 环境下用 ioctlsocket， Linux 环境下用 fcntl
     fcntl(acceptSocket, FIONBIO, &ul);   // 设置成非阻塞模式
 
-
+    //
+    // 创建 epoll
+    //
     int epfd = epoll_create(MAX_EVENTS);
     if (epfd == -1) {
-        Logger::log("epoll_create failed, err:%d\n", errno);
-        exit(EXIT_FAILURE);
+        err("epoll_create failed, Err:%s\n", getErrorInfo().c_str());
+        safeExit(-1);
     }
     struct epoll_event ev, events[MAX_EVENTS];
     ev.events = EPOLLIN;
     ev.data.fd = acceptSocket;
-    epoll_ctl(epfd, EPOLL_CTL_ADD, acceptSocket, &ev);
+    epoll_ctl(epfd, EPOLL_CTL_ADD, acceptSocket, &ev);  // 将 epoll 对象与 acceptSocket 绑定
 
+    //
+    // 监听客户端连接
+    //
     while (1) {
-        int nfds = epoll_wait(epfd, events, MAX_EVENTS, -1);
+        int nfds = epoll_wait(epfd, events, MAX_EVENTS, -1); // timeout 为 -1 表示无限等待
         if (nfds == -1) {
-            Logger::log("epoll_wait failed, errno:%d\n", errno);
-            exit(EXIT_FAILURE);
+            err("epoll_wait failed, Err:%s\n", getErrorInfo().c_str());
+            continue;
         }
+
+        // 遍历每一个事件
         for (int i = 0; i < nfds; i++) {
             int fd = events[i].data.fd;
             // 如果是监听 socket
@@ -139,8 +152,12 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
                     sockaddr clientAddr;
                     socklen_t addrLen = sizeof(sockaddr);
                     int connSocket = accept(acceptSocket, &clientAddr, &addrLen);
+                    // 将新 socket 加入到监听列表中
 
                 }
+            } else {
+                // 将 socket 放入任务队列中
+
             }
         }
     }
