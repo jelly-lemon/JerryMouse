@@ -5,6 +5,7 @@
 #include <getopt.h>
 #include "MiniWebServer.cpp"
 
+
 using namespace std;
 
 // 基础配置
@@ -66,7 +67,7 @@ int main(int argc, char *argv[]) {
     }
 
 
-    Logger(true);
+    Logger(false, true);
 
     // 根据输入的参数启动服务端
     MiniWebServer server;

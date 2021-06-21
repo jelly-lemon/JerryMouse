@@ -136,6 +136,31 @@ string getClientIPPort(SOCKET &connSocket) {
 
 
 #ifdef WIN32
+
+/**
+ * 获取 SOCKET 出错信息
+ */
+string getWSAErrorInfo() {
+    int err_code = WSAGetLastError();
+    string err_info("WSAError:");
+    switch (err_code) {
+        case WSAEADDRINUSE:
+            err_info += "port is in use, can't bind";
+            break;
+        case WSAENOTSOCK:
+            err_info += "Socket operation on nonsocket";
+            break;
+        case WSAETIMEDOUT:
+            err_info += "recv timeout";
+            break;
+        default:
+            err_info += to_string(err_code);
+            break;
+    }
+
+    return err_info;
+}
+
 /**
  * 初始化 socket 调用环境
  */
@@ -166,27 +191,5 @@ void initWSA(int a=2, int b=2) {
 }
 
 
-/**
- * 获取 SOCKET 出错信息
- */
-string getWSAErrorInfo() {
-    int err_code = WSAGetLastError();
-    string err_info("WSAError:");
-    switch (err_code) {
-        case WSAEADDRINUSE:
-            err_info += "port is in use, can't bind";
-            break;
-        case WSAENOTSOCK:
-            err_info += "Socket operation on nonsocket";
-            break;
-        case WSAETIMEDOUT:
-            err_info += "recv timeout";
-            break;
-        default:
-            err_info += to_string(err_code);
-            break;
-    }
 
-    return err_info;
-}
 #endif

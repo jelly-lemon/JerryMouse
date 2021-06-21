@@ -30,8 +30,9 @@ private:
 
 
 public:
-    Logger(bool writeToFile): writeFileThread(0) {
+    Logger(bool printInfo = true, bool writeToFile = true): writeFileThread(0) {
         Logger::isWriteToFile = writeToFile;
+        Logger::isPrintInfo = printInfo;
         if (writeToFile) {
             startWriteFileThread();
         }
@@ -39,6 +40,7 @@ public:
     static pthread_mutex_t printLock;
     static MsgQueue msgQueue;       // 消息队列
     static bool isWriteToFile;
+    static bool isPrintInfo;
 
     static void print(ostream *pOut, string msg);
 
@@ -204,10 +206,11 @@ string Logger::getString(const char *format, va_list arg) {
  * @param s 字符串
  */
 void Logger::log(ostream *pOut, string s) {
-
-//    pthread_mutex_lock(&printLock);
-//    *pOut << s << std::flush;;
-//    pthread_mutex_unlock(&printLock);
+    if (isPrintInfo) {
+        pthread_mutex_lock(&printLock);
+        *pOut << s << std::flush;;
+        pthread_mutex_unlock(&printLock);
+    }
 
     // 写入文件
     if (isWriteToFile) {
@@ -306,4 +309,5 @@ string Logger::getCurrentTime() {
  */
 MsgQueue Logger::msgQueue;
 bool Logger::isWriteToFile = true;
+bool Logger::isPrintInfo = true;
 pthread_mutex_t Logger::printLock;
