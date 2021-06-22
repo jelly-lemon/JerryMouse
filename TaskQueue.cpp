@@ -14,8 +14,8 @@
  */
 #include <list>
 #include <mutex>
-#include <winsock2.h>
 using namespace std;
+typedef int SOCKET;
 
 class TaskQueue {
 private:

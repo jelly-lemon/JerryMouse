@@ -1,9 +1,8 @@
 // 本文件包含了 ThreadPool 类、传给子线程的参数结构体 ThreadArgs
 #pragma once
 
-#include <pthread.h>
-#include <winsock2.h>
-#include "v4/IOCPHttpResponse.cpp"
+#include <thread>
+#include "HttpResponse.cpp"
 #include "TaskQueue.cpp"
 
 using namespace std;
@@ -116,7 +115,7 @@ void ThreadPool::onWorkerFinished() {
 
 
 void ThreadPool::handleSocket(SOCKET connSocket) {
-    IOCPHttpResponse response(connSocket);
+    HttpResponse response(connSocket);
     response.handleRequest();
 }
 

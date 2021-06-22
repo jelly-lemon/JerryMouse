@@ -27,7 +27,7 @@ private:
 
 
 public:
-    explicit MiniWebServer(int poolSize = 30): threadPool(poolSize) {
+    explicit MiniWebServer(int poolSize = 30) : threadPool(poolSize) {
         initWSA();
     }
 
@@ -37,7 +37,6 @@ public:
 
     static SOCKET createListenSocket(int port, int maxSocketNumber, string ip);
 };
-
 
 
 void MiniWebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
@@ -117,8 +116,11 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     // 创建监听 socket
     //
     SOCKET acceptSocket = createListenSocket(port, maxSocketNumber, ip);
-    unsigned long ul=1;
-    fcntl(acceptSocket, FIONBIO, &ul);   // 设置成非阻塞模式
+    if (setNonBlocking(acceptSocket) == -1) {
+        // 设置成非阻塞模式
+        err("setNonBlocking failed, Err:%s\n", getErrorInfo().c_str());
+        safeExit(-1);
+    }
 
     //
     // 创建 epoll
@@ -128,14 +130,19 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
         err("epoll_create failed, Err:%s\n", getErrorInfo().c_str());
         safeExit(-1);
     }
-    struct epoll_event ev, events[MAX_EVENTS];
-    ev.events = EPOLLIN;
+
+    //
+    // 将 epoll 对象与 acceptSocket 绑定
+    //
+    epoll_event ev = {};
+    ev.events = EPOLLIN;    //  事件类型
     ev.data.fd = acceptSocket;
-    epoll_ctl(epfd, EPOLL_CTL_ADD, acceptSocket, &ev);  // 将 epoll 对象与 acceptSocket 绑定
+    epoll_ctl(epfd, EPOLL_CTL_ADD, acceptSocket, &ev);
 
     //
     // 监听客户端连接
     //
+    epoll_event events[MAX_EVENTS];
     while (1) {
         int nfds = epoll_wait(epfd, events, MAX_EVENTS, -1); // timeout 为 -1 表示无限等待
         if (nfds == -1) {
@@ -143,21 +150,44 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
             continue;
         }
 
+        //
         // 遍历每一个事件
+        //
         for (int i = 0; i < nfds; i++) {
             int fd = events[i].data.fd;
             // 如果是监听 socket
             if (fd == acceptSocket) {
                 while (true) {
+                    // 获取连接 socket
                     sockaddr clientAddr;
                     socklen_t addrLen = sizeof(sockaddr);
                     int connSocket = accept(acceptSocket, &clientAddr, &addrLen);
+                    if (connSocket == -1) {
+                        if (errno != EAGAIN && errno != ECONNABORTED && errno != EPROTO && errno != EINTR) {
+                            err("accept failed, Err:%s\n", getErrorInfo().c_str());
+                        }
+                        break;
+                    }
+
                     // 将新 socket 加入到监听列表中
-
+                    if (setNonBlocking(connSocket) == -1) {
+                        err("setNonBlocking failed, Err:%s\n", getErrorInfo().c_str());
+                        continue;
+                    }
+                    ev.events = EPOLLIN | EPOLLET;
+                    ev.data.fd = connSocket;
+                    if (epoll_ctl(epfd, EPOLL_CTL_ADD, connSocket, &ev) == -1) {
+                        err("epoll_ctl: add failed, Err:%s\n", getErrorInfo().c_str());
+                        safeExit(-1);
+                    }
                 }
-            } else {
+            } else if (events[i].events & EPOLLIN){
                 // 将 socket 放入任务队列中
-
+                bool rt = threadPool.submit(events[i].data.fd);
+                if (!rt) {
+                    err("submit failed, TaskQueue is full, close socket.\n");
+                    closesocket(events[i].data.fd);
+                }
             }
         }
     }
