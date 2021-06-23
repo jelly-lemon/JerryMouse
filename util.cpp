@@ -16,6 +16,14 @@ using namespace std;
 
 
 
+/**
+ *  将 socket 设置为非阻塞
+ */
+int setNonBlocking(SOCKET sockfd) {
+    unsigned long ul=1;
+    return fcntl(sockfd, FIONBIO, &ul);   // 设置成非阻塞模式
+}
+
 #ifdef linux
 /**
  * 获取错误信息
