@@ -77,7 +77,7 @@ int IOCPHttpResponse::httpSend(const string &responseLine, const string &respons
     DWORD dwFlags = 0;
     int n = WSASend(lpData->client, &lpData->wsabuf, 1, NULL,
                     dwFlags, &(lpData->Overlapped), NULL);
-    if (n == SOCKET_ERROR and WSAGetLastError() != ERROR_IO_PENDING) {
+    if (n == SOCKET_ERROR && WSAGetLastError() != ERROR_IO_PENDING) {
         char msg[1024] = {'\0'};
         snprintf(msg, 1023, "reply failed, %s", getWSAErrorInfo().c_str());
         throw SocketException(msg);

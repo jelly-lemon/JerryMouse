@@ -38,4 +38,8 @@ public:
         m_queue.pop_front();
         return x;
     }
+
+    bool isEmpty() {
+        return m_queue.empty();
+    }
 };

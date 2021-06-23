@@ -18,7 +18,7 @@ HANDLE g_hIOCP;
 
 
 DWORD WINAPI WorkerThread(LPVOID WorkThreadContext) {
-    IO_DATA *data = NULL;
+    IO_DATA *pIoData = NULL;
     void *lpCompletionKey = NULL;
     LPOVERLAPPED lpOverlapped = NULL;
     DWORD dwIoSize = 0;
@@ -29,45 +29,45 @@ DWORD WINAPI WorkerThread(LPVOID WorkThreadContext) {
                                   (LPOVERLAPPED *) &lpOverlapped, INFINITE);
         if (!success) {
             err("GetQueuedCompletionStatus failed, %s\n", getWSAErrorInfo().c_str())
-            HttpResponse::closeSocket(data->client);
-            delete data;
+            HttpResponse::closeSocket(pIoData->client);
+            delete pIoData;
             continue;
         }
 
         // 如果客户端已经关闭，跳出本次循环
         // 【疑问】为啥 lpOverlapped 可以转成 IO_DATA ?难道是因为Overlapped是结构体第一个成员？对的
-        data = (IO_DATA *) lpOverlapped;
+        pIoData = (IO_DATA *) lpOverlapped;
         if (dwIoSize == 0) {
-            info("[socket %s] client disconnected.\n", getClientIPPort(data->client).c_str());
-            HttpResponse::closeSocket(data->client);
-            delete data;
+            info("[socket %s] client disconnected.\n", getClientIPPort(pIoData->client).c_str());
+            HttpResponse::closeSocket(pIoData->client);
+            delete pIoData;
             continue;
         }
 
         // WSARecv 完成，也就是读操作完成
-        if (data->opCode == RECV_FINISHED) {
+        if (pIoData->opCode == RECV_FINISHED) {
             // 读取到的数据都保存在 lpIOContext 所指向内存中
-            ZeroMemory(&data->Overlapped, sizeof(data->Overlapped));
-            data->opCode = SEND_FINISHED;
+            ZeroMemory(&pIoData->Overlapped, sizeof(pIoData->Overlapped));
+            pIoData->opCode = SEND_FINISHED;
 
             // 响应客户端
-            IOCPHttpResponse response(data);
-            string rawData(data->wsabuf.buf);
+            IOCPHttpResponse response(pIoData);
+            string rawData(pIoData->wsabuf.buf);
             try {
                 response.handleRequest(rawData);
             } catch (exception &e) {
                 err("handleRequest failed, %s, %s\n", e.what(), getWSAErrorInfo().c_str());
-                HttpResponse::closeSocket(data->client);
-                delete data;
+                HttpResponse::closeSocket(pIoData->client);
+                delete pIoData;
                 continue;
             }
-        } else if (data->opCode == SEND_FINISHED) {
+        } else if (pIoData->opCode == SEND_FINISHED) {
             // 回复成功
-            info("[socket %s] reply finished\n", getClientIPPort(data->client).c_str());
+            info("[socket %s] reply finished\n", getClientIPPort(pIoData->client).c_str());
 
             // 关闭连接
-            HttpResponse::closeSocket(data->client);
-            delete data;
+            HttpResponse::closeSocket(pIoData->client);
+            delete pIoData;
             continue;
         }
     }
@@ -98,7 +98,7 @@ public:
  * 打印 acceptSocket 监听的 IP 和端口
  */
 string MiniWebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
-    struct sockaddr_in socketAddr;
+    sockaddr_in socketAddr = {};
     int len = sizeof(socketAddr);
     getsockname(acceptSocket, (struct sockaddr *) &socketAddr, &len);
     string listenIpPort = string(inet_ntoa(socketAddr.sin_addr)) + ":" + to_string(ntohs(socketAddr.sin_port));
@@ -196,24 +196,24 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
             HttpResponse::closeSocket(client);
         } else {
             // 初始化 IO_DATA 结构体
-            IO_DATA *data = new IO_DATA;
-            memset(&data->Overlapped, 0, sizeof(data->Overlapped));
-            data->opCode = RECV_FINISHED;
+            IO_DATA *pIoData = new IO_DATA;
+            memset(&pIoData->Overlapped, 0, sizeof(pIoData->Overlapped));
+            pIoData->opCode = RECV_FINISHED;
             int bufLen = 1024;
-            data->wsabuf.buf = new char[bufLen];
-            memset(data->wsabuf.buf, '\0', bufLen);
-            data->wsabuf.len = bufLen;
-            data->client = client;
+            pIoData->wsabuf.buf = new char[bufLen];
+            memset(pIoData->wsabuf.buf, '\0', bufLen);
+            pIoData->wsabuf.len = bufLen;
+            pIoData->client = client;
             DWORD dwFlags = 0;
 
             // WSARecv 非阻塞，在这个 Socket 上提交一个读取数据的请求，然后内核就会去读取数据
-            int nRet = WSARecv(client, &data->wsabuf, 1, NULL,
+            int nRet = WSARecv(client, &pIoData->wsabuf, 1, NULL,
                                &dwFlags,
-                               &data->Overlapped, NULL);
+                               &pIoData->Overlapped, NULL);
             if (nRet == SOCKET_ERROR && (ERROR_IO_PENDING != WSAGetLastError())) {
                 err("WASRecv Failed, %s\n", getWSAErrorInfo().c_str())
                 closesocket(client);
-                delete data;
+                delete pIoData;
             }
         }
     }

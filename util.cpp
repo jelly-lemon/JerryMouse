@@ -4,14 +4,16 @@
 #include <fstream>
 #include <sstream>
 #include <cstring>
-#include <unistd.h>
 #include "Logger.cpp"
+
+#ifdef linux
+#include <unistd.h>
+typedef int SOCKET;
+#endif
 
 using namespace std;
 
-#ifdef linux
-typedef int SOCKET;
-#endif
+
 
 
 #ifdef linux
@@ -71,7 +73,7 @@ string getFileType(string url) {
  * @param code 退出代码
  */
 void safeExit(int code) {
-    while (Logger::isWriteThreadWorking()) {
+    while (!Logger::msgQueue.isEmpty()) {
         Logger::print(&cout, "waiting logger write-thread finished\n");
         Sleep(100);
     }

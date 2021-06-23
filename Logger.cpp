@@ -9,8 +9,8 @@
 
 #include <iostream>
 #include <ctime>
-#include <pthread.h>
 #include <fstream>
+#include<thread>
 #include "MsgQueue.cpp"
 
 
@@ -21,23 +21,24 @@
 #include <io.h>
 #endif
 
+
 using namespace std;
 
 class Logger {
 private:
-    pthread_t writeFileThread;
+    thread *pWriteThread;
     void startWriteFileThread();
 
 
 public:
-    Logger(bool printInfo = true, bool writeToFile = true): writeFileThread(0) {
+    Logger(bool printInfo = true, bool writeToFile = true) {
         Logger::isWriteToFile = writeToFile;
         Logger::isPrintInfo = printInfo;
-        if (writeToFile) {
-            startWriteFileThread();
-        }
+        startWriteFileThread();
     }
-    static pthread_mutex_t printLock;
+
+    static mutex printLock;
+
     static MsgQueue msgQueue;       // 消息队列
     static bool isWriteToFile;
     static bool isPrintInfo;
@@ -48,7 +49,7 @@ public:
 
     static string getCurrentTime();
 
-    static void *t_write(void *args);
+    static void *t_write();
 
     static string getString(const char *format, va_list arg);
 
@@ -96,15 +97,8 @@ public:
  * 启动写文件线程
  */
 void Logger::startWriteFileThread() {
-    if (writeFileThread != 0)
-        return;
-
-    int n = pthread_create(&writeFileThread, NULL, t_write, NULL);
-    if (n == 0) {
-        info("start writeFileThread succeed\n")
-    } else {
-        print(&cerr, "start writeFileThread failed\n");
-    }
+    pWriteThread = new thread(t_write);
+    pWriteThread->detach();
 }
 
 /**
@@ -118,24 +112,30 @@ bool Logger::isWriteThreadWorking() {
 /**
  * 线程函数，从消息队列中取消息，然后写入文件
  */
-void *Logger::t_write(void *args) {
+void *Logger::t_write() {
+    info("t_write thread is running\n");
     while (1) {
         // 取数据，若没有数据，阻塞等待
         string msg = msgQueue.get();
-
-        // 获取日志文件路径
-        string filePath = getLogFilePath();
-
-        // 写入文件
-        // 【易错点】要以二进制格式写入，不然 \r\n 会被写成 \r\r\n
-        // 以二进制格式写入，\r\n 就原模原样写入
-        ofstream logFile(filePath, ios::app | ios::binary);   // 打开文件
-        if (logFile) {
-            logFile << msg;
-        } else {
-            print(&cerr, "log file open failed:" + filePath);
+        if (isPrintInfo) {
+            cout << msg << flush;
         }
-        logFile.close();    // 关闭文件
+
+        if (isWriteToFile) {
+            // 获取日志文件路径
+            string filePath = getLogFilePath();
+
+            // 写入文件
+            // 【易错点】要以二进制格式写入，不然 \r\n 会被写成 \r\r\n
+            // 以二进制格式写入，\r\n 就原模原样写入
+            ofstream logFile(filePath, ios::app | ios::binary);   // 打开文件
+            if (logFile) {
+                logFile << msg;
+            } else {
+                print(&cerr, "log file open failed:" + filePath);
+            }
+            logFile.close();    // 关闭文件
+        }
     }
 }
 
@@ -184,7 +184,7 @@ string Logger::getString(const char *format, va_list arg) {
     done = vsnprintf(msg, len - 1, format, arg);
 
     // 字符串长度超过 len-4 时，最后面省略号表示
-    if (done == -1 or done > 1000) {
+    if (done == -1 || done > 1000) {
         msg[len - 5] = '.';
         msg[len - 4] = '.';
         msg[len - 3] = '.';
@@ -206,16 +206,7 @@ string Logger::getString(const char *format, va_list arg) {
  * @param s 字符串
  */
 void Logger::log(ostream *pOut, string s) {
-    if (isPrintInfo) {
-        pthread_mutex_lock(&printLock);
-        *pOut << s << std::flush;;
-        pthread_mutex_unlock(&printLock);
-    }
-
-    // 写入文件
-    if (isWriteToFile) {
-        Logger::msgQueue.put(s);
-    }
+    Logger::msgQueue.put(s);
 }
 
 /**
@@ -310,4 +301,4 @@ string Logger::getCurrentTime() {
 MsgQueue Logger::msgQueue;
 bool Logger::isWriteToFile = true;
 bool Logger::isPrintInfo = true;
-pthread_mutex_t Logger::printLock;
+mutex Logger::printLock;

@@ -2,8 +2,11 @@
 #error only Windows support IOCP.
 #endif
 #include <string>
-#include <getopt.h>
 #include "MiniWebServer.cpp"
+
+#ifdef __GNUC__
+#include <getopt.h>
+#endif
 
 
 using namespace std;
@@ -20,6 +23,7 @@ int main(int argc, char *argv[]) {
     int port = 80;              // 端口
     int backlog = 99999;         // accept 队列大小
 
+    /*
     // 设置可解析参数列表
     struct option long_options[] =
             {
@@ -65,9 +69,10 @@ int main(int argc, char *argv[]) {
                 break;
         }
     }
+    */
 
 
-    Logger(false, true);
+    Logger(true, true);
 
     // 根据输入的参数启动服务端
     MiniWebServer server;
