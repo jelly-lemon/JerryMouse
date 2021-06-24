@@ -9,6 +9,7 @@
 #include <string>
 #include <fcntl.h>
 #include "../ThreadPool.cpp"
+#include "../util.cpp"
 
 
 #define MAX_EVENTS 10
@@ -97,7 +98,7 @@ SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string i
     } else {
         info("now, you can visit http://127.0.0.1:%d to browse homepage.\n", port);
     }
-    info("web_root dir is %s\n", IOCPHttpResponse::rootDir.c_str());
+    info("web_root dir is %s\n", HttpResponse::rootDir.c_str());
     info("waiting for connection...\n");
 
     return acceptSocket;
@@ -186,7 +187,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
                 bool rt = threadPool.submit(events[i].data.fd);
                 if (!rt) {
                     err("submit failed, TaskQueue is full, close socket.\n");
-                    closesocket(events[i].data.fd);
+                    HttpResponse::closeSocket(events[i].data.fd);
                 }
             }
         }

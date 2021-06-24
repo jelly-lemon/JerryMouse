@@ -4,7 +4,8 @@
 #include <map>
 #include <iostream>
 #include "HttpRequest.cpp"
-
+#include "util.cpp"
+typedef int SOCKET;
 using namespace std;
 
 
@@ -90,7 +91,7 @@ string HttpResponse::getRequestData(int recvTimeout) {
         // 判断读取情况
         if (code == 0) {
             // 客户端主动关闭了
-            throw SocketException("client closed connection");
+            throw runtime_error("client closed connection");
         } else if (code == SOCKET_ERROR) {
             // socket 异常中断或读取超时
             char msg[101] = {'\0'};
