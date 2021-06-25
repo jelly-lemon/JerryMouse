@@ -10,8 +10,8 @@
 #include <iostream>
 #include <ctime>
 #include <fstream>
-#include<thread>
-#include "MsgQueue.cpp"
+#include <thread>
+#include "SyncQueue.cpp"
 
 
 #ifdef linux
@@ -39,7 +39,7 @@ public:
 
     static mutex printLock;
 
-    static MsgQueue msgQueue;       // 消息队列
+    static SyncQueue<string> msgQueue;       // 消息队列
     static bool isWriteToFile;
     static bool isPrintInfo;
 
@@ -59,7 +59,7 @@ public:
 
     static string getFormattedStr(const char *format, ...);
 
-    static void log(ostream *pOut, string s);
+    static void log(string s);
 
     static bool isWriteThreadWorking();
 };
@@ -68,10 +68,10 @@ public:
  * Info 打印
  */
 #define info(...) {\
-    string sPrefix = Logger::getPrefix();\
+    string sPrefix = Logger::getPrefix(); \
     string info = Logger::getFormattedStr(__VA_ARGS__);\
     string s = Logger::getFormattedStr("%s%s", sPrefix.c_str(), info.c_str());\
-    Logger::log(&cout, s);\
+    Logger::log(s);\
 }
 
 /**
@@ -89,8 +89,8 @@ public:
     string sPrefix = Logger::getPrefix();\
     string lineInfo = Logger::getFormattedStr("(%s:%d)", __FILE__, __LINE__);\
     string errInfo = Logger::getFormattedStr(__VA_ARGS__);\
-    string s = Logger::getFormattedStr("%s%s%s", sPrefix.c_str(), lineInfo.c_str(), errInfo.c_str());\
-    Logger::log(&cerr, s);\
+    string s = Logger::getFormattedStr("%s%s\n%s", sPrefix.c_str(), lineInfo.c_str(), errInfo.c_str());\
+    Logger::log(s);\
 }
 
 /**
@@ -205,7 +205,7 @@ string Logger::getString(const char *format, va_list arg) {
  * @param pOut 输出对象
  * @param s 字符串
  */
-void Logger::log(ostream *pOut, string s) {
+void Logger::log(string s) {
     Logger::msgQueue.put(s);
 }
 
@@ -298,7 +298,7 @@ string Logger::getCurrentTime() {
 /**
  * 静态变量初始化（只能在类外部）
  */
-MsgQueue Logger::msgQueue;
+SyncQueue<string> Logger::msgQueue;
 bool Logger::isWriteToFile = true;
 bool Logger::isPrintInfo = true;
 mutex Logger::printLock;

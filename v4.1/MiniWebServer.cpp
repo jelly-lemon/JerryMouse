@@ -17,7 +17,7 @@ HANDLE g_hIOCP;
 
 
 
-DWORD WINAPI WorkerThread(LPVOID WorkThreadContext) {
+DWORD WINAPI t_worker(LPVOID WorkThreadContext) {
     IO_DATA *data = NULL;
     void *lpCompletionKey = NULL;
     LPOVERLAPPED lpOverlapped = NULL;

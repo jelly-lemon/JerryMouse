@@ -3,9 +3,8 @@
 
 #include <winsock2.h>
 #include <map>
-#include "../Exception.cpp"
-#include "../util.cpp"
-#include "../HttpResponse.cpp"
+#include "../common/util.cpp"
+#include "../common/HttpResponse.cpp"
 
 using namespace std;
 
@@ -23,9 +22,11 @@ enum IO_OPERATION {
 
 /**
  * 存储 socket 及 IO 数据
+ *
+ * 【注意】OVERLAPPED Overlapped; 必须为第一个成员
  */
 struct IO_DATA {
-    OVERLAPPED Overlapped; // 必须为第一个成员
+    OVERLAPPED Overlapped;
     WSABUF wsabuf;
     IO_OPERATION opCode;
     SOCKET client;
@@ -58,29 +59,39 @@ public:
  * @return 发送数据的字节数
  */
 int IOCPHttpResponse::httpSend(const string &responseLine, const string &responseBody, const string &contentType) {
+    //
     // 在 Header 中添加 body 类型和长度信息
+    //
     setHeader("Content-Length", to_string(responseBody.length()));
     setHeader("Content-Type", contentType);
 
-    // 整理数据
+    //
+    // 整理待发送数据
+    //
     string sendHeader = getStrHeader();
     string sendData = responseLine + sendHeader + responseBody;
 
+    //
     // 发送数据到客户端
-    delete[] lpData->wsabuf.buf;  // 删除接收缓存
+    //
+    //delete[] lpData->wsabuf.buf;  // 删除接收缓存
     lpData->wsabuf.buf = new char[sendData.length() + 1];
     lpData->wsabuf.len = sendData.length() + 1;
     memset(lpData->wsabuf.buf, '\0', lpData->wsabuf.len);
     strcpy(lpData->wsabuf.buf, sendData.c_str());
-
     info("[socket %s] reply\n%s\n", getClientIPPort(lpData->client).c_str(), lpData->wsabuf.buf);
     DWORD dwFlags = 0;
     int n = WSASend(lpData->client, &lpData->wsabuf, 1, NULL,
                     dwFlags, &(lpData->Overlapped), NULL);
+    // ------------------------------
+    //
+    // ERROR_IO_PENDING 表示：
+    //
+    //-------------------------------
     if (n == SOCKET_ERROR && WSAGetLastError() != ERROR_IO_PENDING) {
         char msg[1024] = {'\0'};
-        snprintf(msg, 1023, "reply failed, %s", getWSAErrorInfo().c_str());
-        throw SocketException(msg);
+        snprintf(msg, 1023, "WSASend failed");
+        throw runtime_error(msg);
     }
 
     return n;

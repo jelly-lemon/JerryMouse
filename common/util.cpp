@@ -1,7 +1,6 @@
 #pragma once
 
 
-#include <fstream>
 #include <sstream>
 #include <cstring>
 #include "Logger.cpp"
@@ -9,29 +8,59 @@
 #ifdef linux
 #include <unistd.h>
 typedef int SOCKET;
+#elif WIN32
+
+#include "winsock2.h"
+
 #endif
 
 using namespace std;
-
-
 
 
 /**
  *  将 socket 设置为非阻塞
  */
 int setNonBlocking(SOCKET sockfd) {
-    unsigned long ul=1;
-    return fcntl(sockfd, FIONBIO, &ul);   // 设置成非阻塞模式
+    unsigned long ul = 1;
+#ifdef linux
+    int rt = fcntl(sockfd, FIONBIO, &ul);
+#else
+    int rt = ioctlsocket(sockfd, FIONBIO, &ul);
+#endif
+    return rt;
 }
 
-#ifdef linux
+
 /**
  * 获取错误信息
  */
 string getErrorInfo() {
-    string errStr(strerror(errno));
+
+#ifdef linux
+    string err_info(strerror(errno));
+#else
+    int err_code = WSAGetLastError();
+    string err_info;
+    switch (err_code) {
+        case WSAEADDRINUSE:
+            err_info += "port is in use, can't bind";
+            break;
+        case WSAENOTSOCK:
+            err_info += "Socket operation on nonsocket";
+            break;
+        case WSAETIMEDOUT:
+            err_info += "recv timeout";
+            break;
+        default:
+            err_info += to_string(err_code);
+            break;
+    }
+#endif
+
+    return err_info;
 }
 
+#ifdef linux
 /**
  * 使用 select 模拟毫秒级别的挂起
  *
@@ -81,10 +110,17 @@ string getFileType(string url) {
  * @param code 退出代码
  */
 void safeExit(int code) {
+    //
+    // 等待日志线程打印所有完所有消息
+    //
     while (!Logger::msgQueue.isEmpty()) {
-        Logger::print(&cout, "waiting logger write-thread finished\n");
+        Logger::print(&cout, "waiting logger write-thread to finish\n");
         Sleep(100);
     }
+
+#ifdef WIN32
+    WSACleanup();
+#endif
 
     exit(code);
 }
@@ -92,9 +128,17 @@ void safeExit(int code) {
 /**
  * 获取 CPU 逻辑核心数
  */
-int get_logic_cores() {
+int getLogicCoresNumber() {
+    int n = 0;
+#ifdef linux
 
-    return -1;
+#else
+    SYSTEM_INFO sysInfo;
+    GetSystemInfo(&sysInfo);
+    n = sysInfo.dwNumberOfProcessors;
+#endif
+
+    return n;
 }
 
 /**
@@ -102,11 +146,13 @@ int get_logic_cores() {
  */
 string getAcceptIPPort(SOCKET &acceptSocket) {
     sockaddr_in acceptAddr;
+
 #ifdef linux
     socklen_t len = sizeof(acceptAddr);
 #else
     int len = sizeof(acceptAddr);
 #endif
+
     string acceptIPPort;
     if (getsockname(acceptSocket, (struct sockaddr *) &acceptAddr, &len) == 0) {
         char t[100];
@@ -132,7 +178,9 @@ string getClientIPPort(SOCKET &connSocket) {
 #endif
 
     if (getpeername(connSocket, (struct sockaddr *) &peerAddr, &len) == 0) {
+        //
         // socket 存活时才能获取成功
+        //
         char info[50];
         sprintf(info, "%s:%d", inet_ntoa(peerAddr.sin_addr), ntohs(peerAddr.sin_port));
         clientIPport = string(info);
@@ -144,62 +192,47 @@ string getClientIPPort(SOCKET &connSocket) {
 }
 
 
-
 #ifdef WIN32
-
-/**
- * 获取 SOCKET 出错信息
- */
-string getWSAErrorInfo() {
-    int err_code = WSAGetLastError();
-    string err_info("WSAError:");
-    switch (err_code) {
-        case WSAEADDRINUSE:
-            err_info += "port is in use, can't bind";
-            break;
-        case WSAENOTSOCK:
-            err_info += "Socket operation on nonsocket";
-            break;
-        case WSAETIMEDOUT:
-            err_info += "recv timeout";
-            break;
-        default:
-            err_info += to_string(err_code);
-            break;
-    }
-
-    return err_info;
-}
 
 /**
  * 初始化 socket 调用环境
  */
-void initWSA(int a=2, int b=2) {
-    WORD wVersionRequested; // WORD 就是 unsigned short，无符号短整型
-    WSADATA wsaData;    // 一个结构体。这个结构被用来存储被 WSAStartup 函数调用后返回的 Windows Sockets 数据。
-    wVersionRequested = MAKEWORD(a, b); // 将两个 byte 型合并成一个 word 型,一个在高8位(b),一个在低8位(a)。整数 1 是 byte 类型吗？
+void initWSA(int a = 2, int b = 2) {
+    // -----------------------------
+    //
+    // WORD 就是 unsigned short，无符号短整型
+    // WSADATA 这个结构体被用来存储被 WSAStartup 函数调用后返回的 Windows Sockets 数据。
+    // MAKEWORD 将两个 byte 型合并成一个 word 型,一个在高8位(b),一个在低8位(a)
+    //
+    // -----------------------------
+    WORD wVersionRequested;
+    WSADATA wsaData;
+    wVersionRequested = MAKEWORD(a, b); //
 
-    // 初始化
     do {
+        //
         // 初始化套接字环境
+        //
         int n = WSAStartup(wVersionRequested, &wsaData);  // 即WSA(Windows Sockets Asynchronous，Windows异步套接字)的启动命令
         if (n != 0) {
             break;
         }
 
+        //
         // 检查是否初始化成功
+        //
         if (LOBYTE(wsaData.wVersion) != a || HIBYTE(wsaData.wVersion) != b) {
             break;
         }
         return;
-    } while(0);
+    } while (0);
 
+    //
     // 若初始化失败
+    //
+    err("WSAStartup failed, Err:%s\n", getErrorInfo().c_str())
     WSACleanup();   // 功能是终止 Winsock 2 DLL (Ws2_32.dll) 的使用
-    err("WSAStartup failed, %s\n", getWSAErrorInfo().c_str())
-    exit(-1);
+    safeExit(-1);
 }
-
-
 
 #endif

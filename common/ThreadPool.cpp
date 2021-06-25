@@ -3,7 +3,8 @@
 
 #include <thread>
 #include "HttpResponse.cpp"
-#include "TaskQueue.cpp"
+#include "SyncQueue.cpp"
+#include "Logger.cpp"
 
 using namespace std;
 
@@ -16,7 +17,7 @@ private:
     int poolSize;       // 线程池容量
     mutex m_mutex;
     int currentThreadNumber;
-    TaskQueue tasksQueue;  // 任务队列
+    SyncQueue<SOCKET> socketQueue;  // 任务队列
 
 
 public:
@@ -25,7 +26,7 @@ public:
      * 线程池初始化
      */
     explicit ThreadPool(int poolSize):
-    poolSize(poolSize), currentThreadNumber(0), tasksQueue(1000){
+    poolSize(poolSize), currentThreadNumber(0){
 
     }
 
@@ -59,8 +60,8 @@ void *ThreadPool::worker_main(void *args) {
             // 取任务并执行
             SOCKET connSocket = p_threadPool->getTask();
             ThreadPool::handleSocket(connSocket);
-        } catch(exception &err) {
-            Logger::log(" %s, thread finished.\n", err.what());
+        } catch(exception &e) {
+            err("handleSocket failed, Err:%s\n", e.what());
             break;
         }
     }
@@ -77,8 +78,7 @@ void *ThreadPool::worker_main(void *args) {
  * @return: 提交成功或失败
  */
 bool ThreadPool::submit(SOCKET connSocket) {
-    Logger::log(" submit: %d\n", connSocket);
-    if (tasksQueue.put(connSocket)) {
+    if (socketQueue.put(connSocket)) {
         lock_guard<mutex> guard(m_mutex);
         if (currentThreadNumber < poolSize) {
             createNewThread();
@@ -102,7 +102,7 @@ void ThreadPool::createNewThread() {
  * 获取任务
  */
 SOCKET ThreadPool::getTask() {
-    return tasksQueue.take();
+    return socketQueue.get();
 }
 
 /**

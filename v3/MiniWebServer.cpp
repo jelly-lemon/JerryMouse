@@ -8,8 +8,8 @@
 #include <sys/epoll.h>
 #include <string>
 #include <fcntl.h>
-#include "../ThreadPool.cpp"
-#include "../util.cpp"
+#include "../common/ThreadPool.cpp"
+#include "../common/util.cpp"
 
 
 #define MAX_EVENTS 10
@@ -36,7 +36,7 @@ public:
 
     void startServer(int port, int maxSocketNumber, string ip = "");
 
-    static SOCKET createListenSocket(int port, int maxSocketNumber, string ip);
+    static SOCKET createListenSocket(int port, int backlog, string ip);
 };
 
 

@@ -1,11 +1,10 @@
 #pragma once
 
-//#include <winsock2.h>
 #include <map>
 #include <iostream>
 #include "HttpRequest.cpp"
-#include "util.cpp"
-typedef int SOCKET;
+#include "CrossPlatform.h"
+
 using namespace std;
 
 
@@ -27,10 +26,6 @@ private:
 
     virtual int httpSend(const string &responseLine, const string &responseBody, const string &contentType);
 
-
-    void initDefaultHeader();
-
-
     void handlePost(HttpRequest &request);
 
     void handleGet(HttpRequest &request);
@@ -43,7 +38,6 @@ protected:
 
 public:
     explicit HttpResponse(SOCKET &connSocket) : connSocket(connSocket) {
-        initDefaultHeader();
         clientIPport = getClientIPPort(connSocket);
     }
 
@@ -103,7 +97,7 @@ string HttpResponse::getRequestData(int recvTimeout) {
                 closesocket(connSocket);
             } else
                 snprintf(msg, 100, "recv ERROR code:%d", errorCode);
-            throw SocketException(msg);
+            throw runtime_error(msg);
         } else {
             // 判断是否收到全部数据
             if (HttpRequest::isAllData(data))
@@ -119,14 +113,18 @@ string HttpResponse::getRequestData(int recvTimeout) {
  * 处理 get 请求
  */
 void HttpResponse::handleGet(HttpRequest &request) {
-    string url = request.getURL();
+    //
+    // 默认响应类型
+    //
     string responseContentType("text/plain; charset=UTF-8");
 
+    //
     // 判断请求 URL
+    //
+    string url = request.getURL();
     if (url == "/") {
         url = "/home.html";         // 默认 / 就是 /home.html
     }
-
     if (url == "/hello") {
         // 打招呼
         httpSend(OK_200, "Nice to meet you!", responseContentType);
@@ -136,12 +134,12 @@ void HttpResponse::handleGet(HttpRequest &request) {
         snprintf(msg, 100, "Server time is:%s\n", Logger::getCurrentTime().c_str());
         httpSend(OK_200, msg, responseContentType);
     } else {
-        // 前面路径都匹配不上，此时尝试根据 URL 读取文件
+        //
+        // 若前面路径都匹配不上，此时尝试根据 URL 读取文件
+        //
         try {
-            // 读取文件
             string data = getFile(rootDir + url);
             string fileType = getFileType(url);
-
             // 如果是图片
             if (fileType == "png" || fileType == "gif" || fileType == "jpeg" || fileType == "svg") {
                 if (fileType == "svg")
@@ -151,15 +149,18 @@ void HttpResponse::handleGet(HttpRequest &request) {
             } else if (fileType == "html" || fileType == "plain" || fileType == "xml" || fileType == "css") {
                 // 如果是 html 文件
                 responseContentType = "text/" + fileType;
-            } else
+            } else {
                 responseContentType = "application/octet-stream";
+            }
 
+            //
             // 进行响应
+            //
             httpSend(OK_200, data, responseContentType);
-        } catch (invalid_argument &e) {
-            // 进入异常说明客户端请求既没有匹配的处理项，也没有对应的文件，就返回 404 页面
-            char msg[101] = {'\0'};
-            err(" %s\n", e.what())
+        } catch (exception &e) {
+            //
+            // 找不到匹配项，则返回 404 页面
+            //
             send404Page();
         }
     }
@@ -175,7 +176,11 @@ void HttpResponse::handlePost(HttpRequest &request) {
     httpSend(OK_200, "POST request received.", contentType);
 }
 
-
+/**
+ * 处理客户端请求
+ *
+ * @param request: 客户端请求
+ */
 void HttpResponse::handleRequest(HttpRequest &request) {
     if (request.getMethod() == "GET") {
         handleGet(request);
@@ -187,17 +192,18 @@ void HttpResponse::handleRequest(HttpRequest &request) {
 /**
  * 处理客户端请求
  *
- * @param rawData: 若 rawData 为空串，则会调用 recv 尝试读取
+ * @param rawData: 请求内容（原始字符串形式）。若 rawData 为空串，则会调用 recv 尝试读取
  */
 void HttpResponse::handleRequest(string rawData) {
     do {
+        //
         // 若 rawData 为空，则尝试读取
+        //
         if (rawData.empty()) {
             try {
-                // 读取客户端数据
-                rawData = getRequestData(-1);
+                rawData = getRequestData(0);   // 读取客户端数据
             } catch (exception &e) {
-                err("[socket %s] getRequestData err, %s\n", GetCurrentThreadId(),
+                err("[socket %s] getRequestData failed, Err:%s\n", GetCurrentThreadId(),
                     clientIPport.c_str(),
                     e.what())
                 break;
@@ -205,21 +211,24 @@ void HttpResponse::handleRequest(string rawData) {
         }
         info("[socket %s] request\n%s\n", clientIPport.c_str(), rawData.c_str())
 
-        // 进行响应
+        //
+        // 响应请求
+        //
         try {
             // 构建请求对象，并调用相关方法进行处理
             HttpRequest request(rawData);
             handleRequest(request);
         } catch (exception &e) {
-            // 遇到任何 socket 异常就跳出循环
-            err("[socket %s] recv err, %s\n", clientIPport.c_str(), e.what())
+            err("[socket %s] recv err, Err:%s\n", clientIPport.c_str(), e.what())
             break;
         }
         return;
     } while (0);
 
+    //
     // 关闭连接
-    closeSocket(connSocket);
+    //
+    HttpResponse::closeSocket(connSocket);
 }
 
 /**
@@ -232,7 +241,7 @@ int HttpResponse::closeSocket(SOCKET &connSocket) {
     string strIpPort = getClientIPPort(connSocket);
     int n = closesocket(connSocket);
     if (n == SOCKET_ERROR) {
-        err("[socket %s] close socket err, %s\n", strIpPort.c_str(), getWSAErrorInfo().c_str());
+        err("[socket %s] close socket err, %s\n", strIpPort.c_str(), getErrorInfo().c_str());
     } else {
         info("[socket %s] we closed socket.\n", strIpPort.c_str());
     }
@@ -250,23 +259,27 @@ int HttpResponse::closeSocket(SOCKET &connSocket) {
  * @return 发送数据的字节数
  */
 int HttpResponse::httpSend(const string &responseLine, const string &responseBody, const string &contentType) {
+    //
     // 在 Header 中添加 body 类型和长度信息
+    //
     setHeader("Content-Length", to_string(responseBody.length()));
     setHeader("Content-Type", contentType);
     setHeader("Connection", "close");   // 短连接
 
-    // 整理数据
+    //
+    // 整理待发送数据
+    //
     string sendHeader = getStrHeader();
     string sendData = responseLine + sendHeader + responseBody;
+    info("[tid %d][socket %s] reply\n%s\n", GetCurrentThreadId(), clientIPport.c_str(), sendData.c_str());
 
+    //
     // 发送数据到客户端
+    //
     int n = send(connSocket, sendData.c_str(), sendData.size(), 0);
     if (n == SOCKET_ERROR) {
-        char msg[1024] = {'\0'};
-        snprintf(msg, 1023, "response failed, %s", getWSAErrorInfo().c_str());
-        throw SocketException(msg);
+        err("send failed, Err:%s", getErrorInfo().c_str())
     }
-    info("[tid %d][reply %s]\n%s\n", GetCurrentThreadId(), clientIPport.c_str(), sendData.c_str());
 
     return n;
 }
@@ -292,17 +305,6 @@ string HttpResponse::getStrHeader() {
     sendHeader += "\r\n";
 
     return sendHeader;
-}
-
-string HttpResponse::getIP_port() {
-    return clientIPport;
-}
-
-/**
- * 设置默认响应头
- */
-void HttpResponse::initDefaultHeader() {
-    setHeader("Connection", "close");   // 短连接
 }
 
 /**

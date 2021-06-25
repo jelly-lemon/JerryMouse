@@ -3,9 +3,8 @@
 
 #include <winsock2.h>
 #include <map>
-#include "../Exception.cpp"
-#include "../util.cpp"
-#include "../HttpResponse.cpp"
+#include "../common/util.cpp"
+#include "../common/HttpResponse.cpp"
 
 using namespace std;
 

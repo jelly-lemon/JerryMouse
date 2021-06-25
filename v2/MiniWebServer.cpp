@@ -7,7 +7,7 @@
 #include <winsock2.h>
 #include <string>
 
-#include "../ThreadPool.cpp"
+#include "../common/ThreadPool.cpp"
 
 using namespace std;
 
@@ -31,7 +31,7 @@ public:
 
     void startServer(int port, int maxSocketNumber, string ip = "");
 
-    static SOCKET createListenSocket(int port, int maxSocketNumber, string ip);
+    static SOCKET createListenSocket(int port, int backlog, string ip);
 };
 
 
