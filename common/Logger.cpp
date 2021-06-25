@@ -37,11 +37,12 @@ public:
         startWriteFileThread();
     }
 
-    static mutex printLock;
+    static mutex numLock;
 
     static SyncQueue<string> msgQueue;       // 消息队列
     static bool isWriteToFile;
     static bool isPrintInfo;
+    static unsigned int connectionNumber;
 
     static void print(ostream *pOut, string msg);
 
@@ -62,6 +63,10 @@ public:
     static void log(string s);
 
     static bool isWriteThreadWorking();
+
+    static void subConnectionNumber();
+
+    static void addConnectionNumber();
 };
 
 /**
@@ -294,6 +299,16 @@ string Logger::getCurrentTime() {
     return s;
 }
 
+void Logger::addConnectionNumber() {
+    lock_guard<mutex> guarder(numLock);
+    connectionNumber++;
+}
+
+void Logger::subConnectionNumber() {
+    lock_guard<mutex> guarder(numLock);
+    connectionNumber--;
+}
+
 
 /**
  * 静态变量初始化（只能在类外部）
@@ -301,4 +316,5 @@ string Logger::getCurrentTime() {
 SyncQueue<string> Logger::msgQueue;
 bool Logger::isWriteToFile = true;
 bool Logger::isPrintInfo = true;
-mutex Logger::printLock;
+mutex Logger::numLock;
+unsigned int Logger::connectionNumber = 0;

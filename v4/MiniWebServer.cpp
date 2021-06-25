@@ -54,6 +54,7 @@ DWORD WINAPI t_worker(LPVOID WorkThreadContext) {
         if (dwIoSize == 0) {
             info("[socket %s] client disconnected.\n", getClientIPPort(pIoData->client).c_str());
             HttpResponse::closeSocket(pIoData->client);
+            Logger::subConnectionNumber();
             delete pIoData;
             continue;
         }
@@ -233,6 +234,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     while (1) {
         SOCKET client = accept(acceptSocket, NULL, NULL);
         info("[socket %s] socket id %d, client connected\n", getClientIPPort(client).c_str(), client)
+        Logger::addConnectionNumber();
 
         //
         // 将连接 socket 与完成端口绑定
