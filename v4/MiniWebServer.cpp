@@ -246,10 +246,11 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
             //
             // 初始化 IO_DATA 结构体
             //
+            info("create IO_DATA obeject\n");
             IO_DATA *pIoData = new IO_DATA;
             memset(&pIoData->Overlapped, 0, sizeof(pIoData->Overlapped));
             pIoData->opCode = RECV_FINISHED;
-            int bufLen = 1024;
+            int bufLen = 8*1024*100;
             pIoData->wsabuf.buf = new char[bufLen];
             memset(pIoData->wsabuf.buf, '\0', bufLen);
             pIoData->wsabuf.len = bufLen;

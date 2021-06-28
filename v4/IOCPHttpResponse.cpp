@@ -37,14 +37,13 @@ struct IO_DATA {
  */
 class IOCPHttpResponse : public HttpResponse {
 private:
-    IO_DATA *lpData = NULL;
-
+    IO_DATA *pIoData = NULL;
 
     int httpSend(const string &responseLine, const string &responseBody, const string &contentType);
 
 public:
-    IOCPHttpResponse(IO_DATA *lpData) : HttpResponse(lpData->client),
-                                        lpData(lpData) {
+    IOCPHttpResponse(IO_DATA *pIoData) : HttpResponse(pIoData->client),
+                                         pIoData(pIoData) {
 
     }
 };
@@ -74,15 +73,15 @@ int IOCPHttpResponse::httpSend(const string &responseLine, const string &respons
     //
     // 发送数据到客户端
     //
-    //delete[] lpData->wsabuf.buf;  // 删除接收缓存
-    lpData->wsabuf.buf = new char[sendData.length() + 1];
-    lpData->wsabuf.len = sendData.length() + 1;
-    memset(lpData->wsabuf.buf, '\0', lpData->wsabuf.len);
-    strcpy(lpData->wsabuf.buf, sendData.c_str());
-    info("[socket %s] reply\n%s\n", getClientIPPort(lpData->client).c_str(), lpData->wsabuf.buf);
+    //delete[] pIoData->wsabuf.buf;  // 删除接收缓存
+    pIoData->wsabuf.buf = new char[sendData.length() + 1];
+    pIoData->wsabuf.len = sendData.length() + 1;
+    memset(pIoData->wsabuf.buf, '\0', pIoData->wsabuf.len);
+    strcpy(pIoData->wsabuf.buf, sendData.c_str());
+    info("[socket %s] reply\n%s\n", getClientIPPort(pIoData->client).c_str(), pIoData->wsabuf.buf);
     DWORD dwFlags = 0;
-    int n = WSASend(lpData->client, &lpData->wsabuf, 1, NULL,
-                    dwFlags, &(lpData->Overlapped), NULL);
+    int n = WSASend(pIoData->client, &pIoData->wsabuf, 1, NULL,
+                    dwFlags, &(pIoData->Overlapped), NULL);
     // ------------------------------
     //
     // ERROR_IO_PENDING 表示：

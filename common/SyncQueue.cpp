@@ -43,6 +43,9 @@ public:
         return x;
     }
 
+    /**
+     * 队列是否为空
+     */
     bool isEmpty() {
         return m_queue.empty();
     }

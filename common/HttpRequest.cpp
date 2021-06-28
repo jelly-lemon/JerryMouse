@@ -120,18 +120,25 @@ map<string, string> HttpRequest::reqHeaderToMap(const string &reqHeader) {
  * 对请求字符串进行解析
  */
 void HttpRequest::parseRawData() {
+    //
+    // 判断内容是否合法
+    //
     int headerEndPos, pStart, pEnd;
     headerEndPos = rawData.find("\r\n\r\n");   // 找到请求头结束位置
     if (headerEndPos == -1)
         throw invalid_argument("request raw data is not legal\n");
 
+    //
     // 提取请求行
+    //
     pStart = 0;
     pEnd = rawData.find("\r\n");
     string reqLine(rawData, 0, pEnd - pStart);
     requestLine = HttpRequest::reqLineToMap(reqLine);    // 请求行转键值对
 
+    //
     // 提取请求头
+    //
     pStart = pEnd + 2;  // \r\n 两个字节
     pEnd = rawData.find("\r\n\r\n", pStart);
     if (pEnd != -1) {
@@ -139,7 +146,9 @@ void HttpRequest::parseRawData() {
         requestHeader = HttpRequest::reqHeaderToMap(reqHeader);
     }
 
+    //
     // 提取请求体
+    //
     int lineAndHeaderLength = headerEndPos + 4; // \r\n\r\n 占 4 个字节，不要用 sizeof("\r\n\r\n")，用 sizeof 会得到 5
     int rawDataLength = rawData.length();
     if (rawDataLength == lineAndHeaderLength) {
@@ -156,7 +165,9 @@ void HttpRequest::parseRawData() {
  * @param data 目前收到的数据
  */
 bool HttpRequest::isAllData(const string &data) {
+    //
     // 如果存在 \r\n\r\n，说明请求行和请求头已经发送过来了
+    //
     if (data.find("\r\n\r\n") != -1) {
         int pStart = data.find("Content-Length");
         if (pStart != -1) {

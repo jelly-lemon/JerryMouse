@@ -54,10 +54,12 @@ public:
 void *ThreadPool::worker_main(void *args) {
     Logger::log(" new worker\n");
 
+    //
+    // 取任务并执行
+    //
     auto *p_threadPool = (ThreadPool *)args;
     while (true) {
         try {
-            // 取任务并执行
             SOCKET connSocket = p_threadPool->getTask();
             ThreadPool::handleSocket(connSocket);
         } catch(exception &e) {
@@ -66,7 +68,9 @@ void *ThreadPool::worker_main(void *args) {
         }
     }
 
+    //
     // 退出线程
+    //
     p_threadPool->onWorkerFinished();
 
     return NULL;
@@ -113,7 +117,11 @@ void ThreadPool::onWorkerFinished() {
     currentThreadNumber--;
 }
 
-
+/**
+ * 处理连接 socket
+ *
+ * @param connSocket
+ */
 void ThreadPool::handleSocket(SOCKET connSocket) {
     HttpResponse response(connSocket);
     response.handleRequest();
