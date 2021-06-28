@@ -36,8 +36,6 @@ DWORD WINAPI t_worker(LPVOID WorkThreadContext) {
                                   (LPOVERLAPPED *) &lpOverlapped, INFINITE);
         if (!success) {
             err("GetQueuedCompletionStatus failed, %s\n", getErrorInfo().c_str())
-            HttpResponse::closeSocket(pIoData->client);
-            delete pIoData;
             continue;
         }
 
@@ -51,6 +49,9 @@ DWORD WINAPI t_worker(LPVOID WorkThreadContext) {
         //
         // ---------------------------------------------
         pIoData = (IO_DATA *) lpOverlapped;
+        pIoData->beginHandleTime = GetTickCount();
+        DWORD waitingTime = pIoData->beginHandleTime - pIoData->acceptCompletedTime;
+        info("[socket %s] waiting time: %d ms\n", getClientIPPort(pIoData->client).c_str(), waitingTime);
         if (dwIoSize == 0) {
             info("[socket %s] client disconnected.\n", getClientIPPort(pIoData->client).c_str());
             HttpResponse::closeSocket(pIoData->client);
@@ -89,6 +90,8 @@ DWORD WINAPI t_worker(LPVOID WorkThreadContext) {
             // 回复成功
             //
             info("[socket %s] reply finished\n", getClientIPPort(pIoData->client).c_str());
+            DWORD handleTime = GetTickCount() - pIoData->beginHandleTime;
+            info("[socket %s] handle time: %d ms\n", getClientIPPort(pIoData->client).c_str(), handleTime);
 
             //
             // 关闭连接，服务端响应一个请求后就立即关闭 socket
@@ -246,7 +249,6 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
             //
             // 初始化 IO_DATA 结构体
             //
-            info("create IO_DATA obeject\n");
             IO_DATA *pIoData = new IO_DATA;
             memset(&pIoData->Overlapped, 0, sizeof(pIoData->Overlapped));
             pIoData->opCode = RECV_FINISHED;
@@ -255,6 +257,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
             memset(pIoData->wsabuf.buf, '\0', bufLen);
             pIoData->wsabuf.len = bufLen;
             pIoData->client = client;
+            pIoData->acceptCompletedTime = GetTickCount();
             DWORD dwFlags = 0;
 
             //

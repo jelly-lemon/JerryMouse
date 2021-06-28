@@ -30,6 +30,8 @@ struct IO_DATA {
     WSABUF wsabuf;
     IO_OPERATION opCode;
     SOCKET client;
+    DWORD acceptCompletedTime;
+    DWORD beginHandleTime;
 };
 
 /**
