@@ -13,7 +13,7 @@ elseif(UNIX)
 endif()
 
 
-add_executable(main_v1 v1/main_v1.cpp)
+add_executable(main_v1 v1.1/main_v1.1.cpp)
 target_link_libraries(main_v1 ws2_32.lib)
 
 add_executable(main_v2 v2/main_v2.cpp)

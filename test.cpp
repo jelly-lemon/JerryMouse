@@ -3,8 +3,7 @@
 using namespace std;
 
 int main() {
-    err("hello\n")
-    printf("hello\n");
+    string s = Logger::getFormattedStr("hello%s, %s\n", "123");
 
     return 0;
 }

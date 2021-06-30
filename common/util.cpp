@@ -1,18 +1,17 @@
 #pragma once
 
+#ifdef linux
+#include <unistd.h>
+typedef int SOCKET;
+#elif WIN32
+#include "winsock2.h"
+#endif
 
 #include <sstream>
 #include <cstring>
 #include "Logger.cpp"
 
-#ifdef linux
-#include <unistd.h>
-typedef int SOCKET;
-#elif WIN32
 
-#include "winsock2.h"
-
-#endif
 
 using namespace std;
 
@@ -35,7 +34,6 @@ int setNonBlocking(SOCKET sockfd) {
  * 获取错误信息
  */
 string getErrorInfo() {
-
 #ifdef linux
     string err_info(strerror(errno));
 #else
@@ -58,6 +56,19 @@ string getErrorInfo() {
 #endif
 
     return err_info;
+}
+
+/**
+ * 获取 socket 错误码
+ */
+int getErrorCode() {
+#ifdef linux
+    int errorCode = errno;
+#else
+    int errorCode = WSAGetLastError();
+#endif
+
+    return errorCode;
 }
 
 #ifdef linux
@@ -167,7 +178,7 @@ string getAcceptIPPort(SOCKET &acceptSocket) {
 /**
  * 获取客户端 IP 和端口号
  */
-string getClientIPPort(SOCKET &connSocket) {
+string getSocketIPPort(SOCKET &connSocket) {
     string clientIPport;
     sockaddr_in peerAddr;
 
@@ -193,6 +204,20 @@ string getClientIPPort(SOCKET &connSocket) {
 
 
 #ifdef WIN32
+
+/**
+ * 模拟事务
+ *
+ * @param milliseconds 毫秒
+ */
+void cpuRun(int milliseconds) {
+    DWORD startTime = GetTickCount();
+    while (1) {
+        if (GetTickCount() - startTime > milliseconds) {
+            break;
+        }
+    }
+}
 
 /**
  * 初始化 socket 调用环境

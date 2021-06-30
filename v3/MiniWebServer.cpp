@@ -34,7 +34,7 @@ public:
 
     void initWSA();
 
-    void startServer(int port, int maxSocketNumber, string ip = "");
+    void startServer(int port, int backlog, string ip = "");
 
     static SOCKET createListenSocket(int port, int backlog, string ip);
 };

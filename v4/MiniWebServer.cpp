@@ -49,11 +49,8 @@ DWORD WINAPI t_worker(LPVOID WorkThreadContext) {
         //
         // ---------------------------------------------
         pIoData = (IO_DATA *) lpOverlapped;
-        pIoData->beginHandleTime = GetTickCount();
-        DWORD waitingTime = pIoData->beginHandleTime - pIoData->acceptCompletedTime;
-        info("[socket %s] waiting time: %d ms\n", getClientIPPort(pIoData->client).c_str(), waitingTime);
         if (dwIoSize == 0) {
-            info("[socket %s] client disconnected.\n", getClientIPPort(pIoData->client).c_str());
+            info("[socket %s] client disconnected.\n", getSocketIPPort(pIoData->client).c_str());
             HttpResponse::closeSocket(pIoData->client);
             Logger::subConnectionNumber();
             delete pIoData;
@@ -64,6 +61,10 @@ DWORD WINAPI t_worker(LPVOID WorkThreadContext) {
         // WSARecv 完成，也就是读操作完成
         //
         if (pIoData->opCode == RECV_FINISHED) {
+            pIoData->beginHandleTime = GetTickCount();
+            DWORD waitingTime = pIoData->beginHandleTime - pIoData->acceptCompletedTime;
+            info("[socket %s] waiting time: %d ms\n", getSocketIPPort(pIoData->client).c_str(), waitingTime);
+
             // ----------------------------------------
             //
             // 读取到的数据都保存在 pIoData 所指向内存中
@@ -71,6 +72,7 @@ DWORD WINAPI t_worker(LPVOID WorkThreadContext) {
             // ----------------------------------------
             ZeroMemory(&pIoData->Overlapped, sizeof(pIoData->Overlapped));
             pIoData->opCode = SEND_FINISHED;
+            cpuRun(1000);
 
             //
             // 响应客户端
@@ -89,9 +91,9 @@ DWORD WINAPI t_worker(LPVOID WorkThreadContext) {
             //
             // 回复成功
             //
-            info("[socket %s] reply finished\n", getClientIPPort(pIoData->client).c_str());
+            info("[socket %s] reply finished\n", getSocketIPPort(pIoData->client).c_str());
             DWORD handleTime = GetTickCount() - pIoData->beginHandleTime;
-            info("[socket %s] handle time: %d ms\n", getClientIPPort(pIoData->client).c_str(), handleTime);
+            info("[socket %s] handle time: %d ms\n", getSocketIPPort(pIoData->client).c_str(), handleTime);
 
             //
             // 关闭连接，服务端响应一个请求后就立即关闭 socket
@@ -118,7 +120,7 @@ public:
         initWSA();
     }
 
-    void startServer(int port, int maxSocketNumber, string ip = "");
+    void startServer(int port, int backlog, string ip = "");
 
     static SOCKET createListenSocket(int port, int backlog, string ip);
 };
@@ -236,7 +238,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     //
     while (1) {
         SOCKET client = accept(acceptSocket, NULL, NULL);
-        info("[socket %s] socket id %d, client connected\n", getClientIPPort(client).c_str(), client)
+        info("[socket %s] socket id %d, client connected\n", getSocketIPPort(client).c_str(), client)
         Logger::addConnectionNumber();
 
         //

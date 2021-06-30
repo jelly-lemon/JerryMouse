@@ -1,9 +1,9 @@
 #pragma once
 
 #include <map>
-#include <iostream>
 #include "HttpRequest.cpp"
 #include "CrossPlatform.h"
+#include "util.cpp"
 
 using namespace std;
 
@@ -13,7 +13,9 @@ using namespace std;
  */
 class HttpResponse {
 private:
+    //
     // 响应行
+    //
     const string OK_200 = "HTTP/1.1 200 OK\r\n";
     const string NOT_FOUND_404 = "HTTP/1.1 404 Not Found\r\n";
 
@@ -38,12 +40,12 @@ protected:
 
 public:
     explicit HttpResponse(SOCKET &connSocket) : connSocket(connSocket) {
-        clientIPport = getClientIPPort(connSocket);
+        clientIPport = getSocketIPPort(connSocket);
     }
 
     void handleRequest(string rawData = "");
 
-    string getRequestData(int recvTimeout);
+    string getRequestData(int recvTimeout = 0);
 
     static string rootDir;  // 资源所在根目录
 
@@ -54,6 +56,11 @@ public:
     static int closeSocket(SOCKET &connSocket);
 
 };
+
+//
+// 静态变量初始化
+//
+string HttpResponse::rootDir;
 
 
 /**
@@ -201,7 +208,7 @@ void HttpResponse::handleRequest(string rawData) {
         //
         if (rawData.empty()) {
             try {
-                rawData = getRequestData(0);   // 读取客户端数据
+                rawData = getRequestData();   // 读取客户端数据
             } catch (exception &e) {
                 err("[socket %s] getRequestData failed, Err:%s\n", GetCurrentThreadId(),
                     clientIPport.c_str(),
@@ -219,10 +226,9 @@ void HttpResponse::handleRequest(string rawData) {
             HttpRequest request(rawData);
             handleRequest(request);
         } catch (exception &e) {
-            err("[socket %s] recv err, Err:%s\n", clientIPport.c_str(), e.what())
+            err("[socket %s] handleRequest failed, Err:%s\n", clientIPport.c_str(), e.what())
             break;
         }
-        return;
     } while (0);
 
     //
@@ -238,7 +244,7 @@ void HttpResponse::handleRequest(string rawData) {
  * @return
  */
 int HttpResponse::closeSocket(SOCKET &connSocket) {
-    string strIpPort = getClientIPPort(connSocket);
+    string strIpPort = getSocketIPPort(connSocket);
     int n = closesocket(connSocket);
     if (n == SOCKET_ERROR) {
         err("[socket %s] close socket err, %s\n", strIpPort.c_str(), getErrorInfo().c_str());
@@ -271,7 +277,7 @@ int HttpResponse::httpSend(const string &responseLine, const string &responseBod
     //
     string sendHeader = getStrHeader();
     string sendData = responseLine + sendHeader + responseBody;
-    info("[tid %d][socket %s] reply\n%s\n", GetCurrentThreadId(), clientIPport.c_str(), sendData.c_str());
+    info("[socket %s] reply\n%s\n", clientIPport.c_str(), sendData.c_str());
 
     //
     // 发送数据到客户端

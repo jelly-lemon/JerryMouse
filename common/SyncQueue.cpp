@@ -31,17 +31,27 @@ public:
     }
 
     /**
-     * 获取一条信息，没有则阻塞
+     * 获取一条信息
+     *
+     * @param isBocking: 是否阻塞等待
      */
-    T get() {
+    T get(bool isBocking = false) {
         unique_lock<mutex> locker(m_mutex);
-        while(m_queue.empty()) {
-            m_notEmpty.wait(locker);    // 解锁 m_mutex，并等待被唤醒
+        if (isBocking) {
+            while(m_queue.empty()) {
+                m_notEmpty.wait(locker);    // 解锁 m_mutex，并等待被唤醒
+            }
+        } else {
+            if (m_queue.empty()) {
+                throw runtime_error("Queue is empty\n");
+            }
         }
+
         T x = m_queue.front();
         m_queue.pop_front();
         return x;
     }
+
 
     /**
      * 队列是否为空

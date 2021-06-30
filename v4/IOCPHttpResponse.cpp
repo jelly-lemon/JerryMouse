@@ -80,7 +80,7 @@ int IOCPHttpResponse::httpSend(const string &responseLine, const string &respons
     pIoData->wsabuf.len = sendData.length() + 1;
     memset(pIoData->wsabuf.buf, '\0', pIoData->wsabuf.len);
     strcpy(pIoData->wsabuf.buf, sendData.c_str());
-    info("[socket %s] reply\n%s\n", getClientIPPort(pIoData->client).c_str(), pIoData->wsabuf.buf);
+    info("[socket %s] reply\n%s\n", getSocketIPPort(pIoData->client).c_str(), pIoData->wsabuf.buf);
     DWORD dwFlags = 0;
     int n = WSASend(pIoData->client, &pIoData->wsabuf, 1, NULL,
                     dwFlags, &(pIoData->Overlapped), NULL);

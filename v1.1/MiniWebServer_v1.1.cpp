@@ -24,7 +24,7 @@ public:
 
     void initWSA();
 
-    void startServer(int port, int maxSocketNumber, string ip = "");
+    void startServer(int port, int backlog, string ip = "");
 
     void startThread(SOCKET connSocket);
 

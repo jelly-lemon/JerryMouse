@@ -31,18 +31,32 @@ private:
 
 
 public:
-    Logger(bool printInfo = true, bool writeToFile = true) {
-        Logger::isWriteToFile = writeToFile;
-        Logger::isPrintInfo = printInfo;
-        startWriteFileThread();
-    }
-
     static mutex numLock;
-
+    static mutex printLock;
     static SyncQueue<string> msgQueue;       // 消息队列
     static bool isWriteToFile;
     static bool isPrintInfo;
+    static bool isAsyncLog;
     static unsigned int connectionNumber;
+
+    /**
+     *
+     *
+     * @param printInfo
+     * @param writeToFile
+     * @param asyncLog 异步日志
+     */
+    Logger(bool printInfo = true, bool writeToFile = true, bool asyncLog = true) {
+        Logger::isWriteToFile = writeToFile;
+        Logger::isPrintInfo = printInfo;
+        Logger::isAsyncLog = asyncLog;
+
+        if (isAsyncLog) {
+            startWriteFileThread();
+        }
+    }
+
+
 
     static void print(ostream *pOut, string msg);
 
@@ -52,7 +66,7 @@ public:
 
     static void *t_write();
 
-    static string getString(const char *format, va_list arg);
+    static string getFormattedStrCore(const char *format, va_list arg);
 
     //static void log(ostream *pOut, const char *format, ...);
 
@@ -68,6 +82,17 @@ public:
 
     static void addConnectionNumber();
 };
+
+/**
+ * 静态变量初始化（只能在类外部）
+ */
+SyncQueue<string> Logger::msgQueue;
+bool Logger::isWriteToFile = true;
+bool Logger::isPrintInfo = true;
+bool Logger::isAsyncLog = true;
+mutex Logger::numLock;
+mutex Logger::printLock;
+unsigned int Logger::connectionNumber = 0;
 
 /**
  * Info 打印
@@ -118,12 +143,12 @@ bool Logger::isWriteThreadWorking() {
  * 线程函数，从消息队列中取消息，然后写入文件
  */
 void *Logger::t_write() {
-    info("t_write thread is running\n");
+    info(" t_write thread is running\n");
     while (1) {
         //
         // 取数据，若没有数据，阻塞等待
         //
-        string msg = msgQueue.get();
+        string msg = msgQueue.get(true);
 
         //
         // 打印到控制台
@@ -170,7 +195,7 @@ void Logger::print(ostream *pOut, string msg) {
 string Logger::getFormattedStr(const char *format, ...) {
     va_list arg;
     va_start(arg, format);
-    string s = getString(format, arg);
+    string s = getFormattedStrCore(format, arg);
     va_end(arg);
 
     return s;
@@ -182,7 +207,7 @@ string Logger::getFormattedStr(const char *format, ...) {
  * @param format 格式
  * @param arg 变参指针
  */
-string Logger::getString(const char *format, va_list arg) {
+string Logger::getFormattedStrCore(const char *format, va_list arg) {
     int done;
     const int len = 1001; // 字符数组长度
     char msg[len];
@@ -196,6 +221,7 @@ string Logger::getString(const char *format, va_list arg) {
     // 如果格式化后的字符串长度超过 10，则会被截断，并返回 -1，并且位置 10 会被置为 '\0'
     // 减 4 表示给省略号和\0的位置，即:"...\0"的位置
     // --------------------------------------------------
+    // FIXME 如果参数个数对不上通配符，这里会出错，并且没有任何提示
     done = vsnprintf(msg, len - 1, format, arg);
 
     //
@@ -223,7 +249,35 @@ string Logger::getString(const char *format, va_list arg) {
  * @param s 字符串
  */
 void Logger::log(string s) {
-    Logger::msgQueue.put(s);
+    if (isAsyncLog) {
+        Logger::msgQueue.put(s);
+    } else {
+        lock_guard<mutex> lockGuard(printLock);
+        //
+        // 打印到控制台
+        //
+        if (isPrintInfo) {
+            cout << s << flush;
+        }
+
+        //
+        // 写入日志文件
+        //
+        if (isWriteToFile) {
+            string filePath = getLogFilePath();
+            // -----------------------------------------
+            // 【易错点】要以二进制格式写入，不然 \r\n 会被写成 \r\r\n
+            // 以二进制格式写入，\r\n 就原模原样写入
+            // -----------------------------------------
+            ofstream logFile(filePath, ios::app | ios::binary);
+            if (logFile) {
+                logFile << s;
+            } else {
+                print(&cerr, "log file open failed:" + filePath);
+            }
+            logFile.close();
+        }
+    }
 }
 
 /**
@@ -238,7 +292,7 @@ void Log::log(ostream *pOut, const char *format, ...) {
    // 获取格式化后的字符串
    va_list arg;
    va_start(arg, format);
-   string s = getString(format, arg);
+   string s = getFormattedStrCore(format, arg);
    va_end(arg);
 
    // 打印字符串
@@ -347,11 +401,3 @@ void Logger::subConnectionNumber() {
 }
 
 
-/**
- * 静态变量初始化（只能在类外部）
- */
-SyncQueue<string> Logger::msgQueue;
-bool Logger::isWriteToFile = true;
-bool Logger::isPrintInfo = true;
-mutex Logger::numLock;
-unsigned int Logger::connectionNumber = 0;

@@ -25,9 +25,10 @@ public:
     /**
      * 线程池初始化
      */
-    explicit ThreadPool(int poolSize):
-    poolSize(poolSize), currentThreadNumber(0){
-
+    explicit ThreadPool(int poolSize = 0): poolSize(poolSize), currentThreadNumber(0){
+        if (poolSize == 0) {
+            this->poolSize = getLogicCoresNumber() + 1;
+        }
     }
 
     static void *worker_main(void *args);
@@ -52,7 +53,7 @@ public:
  * 子线程函数
  */
 void *ThreadPool::worker_main(void *args) {
-    Logger::log(" new worker\n");
+    info(" new worker\n");
 
     //
     // 取任务并执行
@@ -63,7 +64,7 @@ void *ThreadPool::worker_main(void *args) {
             SOCKET connSocket = p_threadPool->getTask();
             ThreadPool::handleSocket(connSocket);
         } catch(exception &e) {
-            err("handleSocket failed, Err:%s\n", e.what());
+            info("worker finished: %s\n", e.what());
             break;
         }
     }

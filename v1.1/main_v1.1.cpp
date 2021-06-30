@@ -1,6 +1,6 @@
 #include <string>
 #include <getopt.h>
-#include "MiniWebServer.cpp"
+#include "MiniWebServer_v1.1.cpp"
 #include "HttpResponse.cpp"
 
 using namespace std;
