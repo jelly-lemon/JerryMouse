@@ -159,7 +159,9 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
             // 如果是监听 socket
             if (fd == acceptSocket) {
                 while (true) {
+                    //
                     // 获取连接 socket
+                    //
                     sockaddr clientAddr;
                     socklen_t addrLen = sizeof(sockaddr);
                     int connSocket = accept(acceptSocket, &clientAddr, &addrLen);
@@ -170,7 +172,9 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
                         break;
                     }
 
+                    //
                     // 将新 socket 加入到监听列表中
+                    //
                     if (setNonBlocking(connSocket) == -1) {
                         err("setNonBlocking failed, Err:%s\n", getErrorInfo().c_str());
                         continue;
@@ -183,7 +187,9 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
                     }
                 }
             } else if (events[i].events & EPOLLIN){
+                //
                 // 将 socket 放入任务队列中
+                //
                 bool rt = threadPool.submit(events[i].data.fd);
                 if (!rt) {
                     err("submit failed, TaskQueue is full, close socket.\n");
