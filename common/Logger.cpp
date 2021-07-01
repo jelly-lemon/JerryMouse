@@ -31,13 +31,11 @@ private:
 
 
 public:
-    static mutex numLock;
     static mutex printLock;
     static SyncQueue<string> msgQueue;       // 消息队列
     static bool isWriteToFile;
     static bool isPrintInfo;
     static bool isAsyncLog;
-    static unsigned int connectionNumber;
 
     /**
      *
@@ -46,7 +44,7 @@ public:
      * @param writeToFile
      * @param asyncLog 异步日志
      */
-    Logger(bool printInfo = true, bool writeToFile = true, bool asyncLog = true) {
+    Logger(bool asyncLog = true, bool printInfo = true, bool writeToFile = true) {
         Logger::isWriteToFile = writeToFile;
         Logger::isPrintInfo = printInfo;
         Logger::isAsyncLog = asyncLog;
@@ -77,10 +75,6 @@ public:
     static void log(string s);
 
     static bool isWriteThreadWorking();
-
-    static void subConnectionNumber();
-
-    static void addConnectionNumber();
 };
 
 /**
@@ -89,10 +83,8 @@ public:
 SyncQueue<string> Logger::msgQueue;
 bool Logger::isWriteToFile = true;
 bool Logger::isPrintInfo = true;
-bool Logger::isAsyncLog = true;
-mutex Logger::numLock;
+bool Logger::isAsyncLog = false;
 mutex Logger::printLock;
-unsigned int Logger::connectionNumber = 0;
 
 /**
  * Info 打印
@@ -384,20 +376,6 @@ string Logger::getCurrentTime() {
     return s;
 }
 
-/**
- * 现有连接数量加 1
- */
-void Logger::addConnectionNumber() {
-    lock_guard<mutex> guarder(numLock);
-    connectionNumber++;
-}
 
-/**
- * 现有连接数量减 1
- */
-void Logger::subConnectionNumber() {
-    lock_guard<mutex> guarder(numLock);
-    connectionNumber--;
-}
 
 

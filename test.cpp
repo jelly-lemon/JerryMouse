@@ -1,9 +1,10 @@
-#include<iostream>
-#include "common/Logger.cpp"
-using namespace std;
+#include <iostream>
+#include "common/clipp.h"
+#include "common/util.cpp"
 
-int main() {
-    string s = Logger::getFormattedStr("hello%s, %s\n", "123");
+using namespace clipp; using std::cout; using std::string;
 
-    return 0;
+int main(int argc, char* argv[]) {
+    string IP = getLocalIP();
+    cout << IP << endl;
 }

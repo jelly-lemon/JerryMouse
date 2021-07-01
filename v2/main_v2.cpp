@@ -1,25 +1,44 @@
+#include <csignal>
 #include "../common/HttpResponse.cpp"
-#include "../common/Logger.cpp"
 #include "MiniWebServer_v2.cpp"
+#include "../common/util.cpp"
 using namespace std;
-
 
 
 
 
 int main() {
     //
-    // 参数设置
+    // 默认参数
     //
-    HttpResponse::rootDir = "../web_root";   // 资源根目录
+    bool asyncLog = true;
+    bool printInfo = false;
+    bool writeToFile = true;
+    int port = 80;
+    string ip = "10.66.38.27";
+    int backlog = 65535;
+    int poolSize = 0;
+    string webRoot = "../web_root";
 
+
+    //
+    // 注册信号处理
+    //
+    signal(SIGINT, sigHandler);
+
+
+    //
+    // 设置控制台 utf-8 编码
+    //
+    system("chcp 65001");
 
     //
     // 启动服务端
     //
-    Logger logger;  // 创建日志对象
-    MiniWebServer_v2 server;
-    server.startServer(80, "localhost", 65535);
+    HttpResponse::rootDir = webRoot;   // 资源根目录
+    Logger logger(asyncLog, printInfo, writeToFile);  // 创建日志对象
+    MiniWebServer_v2 server(poolSize);
+    server.startServer(port, ip, backlog);
 
     return 0;
 }

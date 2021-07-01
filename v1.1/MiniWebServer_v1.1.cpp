@@ -1,4 +1,4 @@
-// 本文件包含了处理连接的子线程函数、MiniWebServer 类
+// 本文件包含了处理连接的子线程函数、MiniWebServer_v4 类
 #pragma once
 
 #include <string>
@@ -12,13 +12,13 @@ using namespace std;
 /**
  * 对服务端封装成类
  */
-class MiniWebServer {
+class MiniWebServer_v4 {
 private:
     static void showAcceptSocketIPPort(SOCKET acceptSocket);
 
 
 public:
-    explicit MiniWebServer()  {
+    explicit MiniWebServer_v4()  {
         initWSA();
     }
 
@@ -35,7 +35,7 @@ public:
 /**
  * 打印 acceptSocket 监听的 IP 和端口
  */
-void MiniWebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
+void MiniWebServer_v4::showAcceptSocketIPPort(SOCKET acceptSocket) {
     struct sockaddr_in socketAddr;
     int len = sizeof(socketAddr);
     getsockname(acceptSocket, (struct sockaddr *) &socketAddr, &len);
@@ -51,7 +51,7 @@ void MiniWebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
  * @param port 监听端口
  * @param maxSocketNumber 最大监听 socket 数量
 */
-void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
+void MiniWebServer_v4::startServer(int port, int maxSocketNumber, string ip) {
     // 创建监听 socket
     SOCKADDR_IN addrSrv;
     if (ip.empty() || ip == "0.0.0.0")
@@ -108,7 +108,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     }
 }
 
-void MiniWebServer::startThread(SOCKET connSocket) {
+void MiniWebServer_v4::startThread(SOCKET connSocket) {
     // 【易错点】注意这里给线程传参，传的是地址，如果是局部变量的地址，这个函数一结束，局变就没了，
     // 子线程拿到这个地址再去取数据，就是有问题的。
     void *args = &connSocket;
@@ -120,7 +120,7 @@ void MiniWebServer::startThread(SOCKET connSocket) {
 /**
  * 处理连接需要开启的子线程函数
  */
-void *MiniWebServer::handle_connection_main(void *args) {
+void *MiniWebServer_v4::handle_connection_main(void *args) {
     // 解析参数
     SOCKET connSocket = *(SOCKET *)args;
 
@@ -134,7 +134,7 @@ void *MiniWebServer::handle_connection_main(void *args) {
 /**
  * 初始化 socket 调用环境
  */
-void MiniWebServer::initWSA() {
+void MiniWebServer_v4::initWSA() {
     WORD wVersionRequested; // WORD 就是 unsigned short，无符号短整型
     WSADATA wsaData;    // 一个结构体。这个结构被用来存储被 WSAStartup 函数调用后返回的 Windows Sockets 数据。
     wVersionRequested = MAKEWORD(1, 1); // 将两个 byte 型合并成一个 word 型,一个在高8位(b),一个在低8位(a)。整数 1 是 byte 类型吗？

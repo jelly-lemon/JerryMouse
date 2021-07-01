@@ -51,8 +51,6 @@ public:
 
     void handleRequest(HttpRequest &request);
 
-    string getIP_port();
-
     static int closeSocket(SOCKET &connSocket);
 
 };
@@ -210,9 +208,9 @@ void HttpResponse::handleRequest(string rawData) {
             try {
                 rawData = getRequestData();   // 读取客户端数据
             } catch (exception &e) {
-                err("[socket %s] getRequestData failed, Err:%s\n", GetCurrentThreadId(),
+                err("[socket %s] getRequestData failed, Err:%s\n",
                     clientIPport.c_str(),
-                    e.what())
+                    e.what());
                 break;
             }
         }

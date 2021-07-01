@@ -31,7 +31,7 @@ public:
     }
 
     /**
-     * 获取一条信息
+     * 获取一条数据
      *
      * @param isBocking: 是否阻塞等待
      */
@@ -41,6 +41,7 @@ public:
             while(m_queue.empty()) {
                 m_notEmpty.wait(locker);    // 解锁 m_mutex，并等待被唤醒
             }
+
         } else {
             if (m_queue.empty()) {
                 throw runtime_error("Queue is empty\n");
@@ -49,6 +50,7 @@ public:
 
         T x = m_queue.front();
         m_queue.pop_front();
+
         return x;
     }
 
@@ -58,5 +60,9 @@ public:
      */
     bool isEmpty() {
         return m_queue.empty();
+    }
+
+    int getSize() {
+        return m_queue.size();
     }
 };

@@ -6,7 +6,7 @@
 using namespace std;
 
 // 基础配置
-string IOCPHttpResponse::rootDir = "D:/0-2-CLion/MiniWebServer/web_root";   // 资源根目录
+string IOCPHttpResponse::rootDir = "D:/0-2-CLion/MiniWebServer_v4/web_root";   // 资源根目录
 
 
 
@@ -23,7 +23,7 @@ void printUsage() {
     printf("%-10s default=80, listen port\n", "--port");
     printf("%-10s default=30, max accept socket number\n", "--socket");
     printf("\nexample:\n");
-    printf("MiniWebServer.exe --port=12345\n");
+    printf("MiniWebServer_v4.exe --port=12345\n");
     printf("--------------------------------------------------------\n");
 }
 
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
     }
 
     // 根据输入的参数启动服务端
-    MiniWebServer server;
+    MiniWebServer_v4 server;
     server.startServer(port, backlog, ip);
 
     return 0;

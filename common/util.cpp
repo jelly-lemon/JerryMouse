@@ -115,6 +115,8 @@ string getFileType(string url) {
         throw runtime_error("getFileType failed, url:" + url);
 }
 
+
+
 /**
  * 安全退出
  *
@@ -137,9 +139,24 @@ void safeExit(int code) {
 }
 
 /**
+ * 信号处理函数
+ *
+ * @param signal
+ */
+void sigHandler(int signal){
+    switch (signal) {
+        // Ctrl+C
+        case SIGINT:
+            Logger::print(&cout, " recv Ctrl+C, exiting...\n");
+            safeExit(-1);
+            break;
+    }
+}
+
+/**
  * 获取 CPU 逻辑核心数
  */
-int getLogicCoresNumber() {
+int getCPULogicCoresNumber() {
     int n = 0;
 #ifdef linux
 
@@ -180,7 +197,7 @@ string getAcceptIPPort(SOCKET &acceptSocket) {
  */
 string getSocketIPPort(SOCKET &connSocket) {
     string clientIPport;
-    sockaddr_in peerAddr;
+    sockaddr_in peerAddr = {};
 
 #ifdef linux
     socklen_t len = sizeof(peerAddr);
@@ -202,8 +219,55 @@ string getSocketIPPort(SOCKET &connSocket) {
     return clientIPport;
 }
 
-
+/**
+ * 获取 CPU tick count
+ */
+long getTickCount() {
 #ifdef WIN32
+    static BOOL init = FALSE;
+    static BOOL hires = FALSE;
+    static __int64 freq = 1;
+    if(!init) {
+        hires = QueryPerformanceFrequency((LARGE_INTEGER*)&freq);
+        if(!hires) {
+            freq = 1000;
+        }
+        init = TRUE;
+    }
+    __int64 now = 0;
+    if(hires) {
+        QueryPerformanceCounter((LARGE_INTEGER*)&now);
+    }
+    else {
+        now = GetTickCount();
+    }
+
+    long tickCount = (long)(1000.0f * (double)now/(double)freq);
+
+    return tickCount;
+#else
+
+#endif
+    return 0;
+}
+
+
+
+/**
+ * 获取时间差
+ */
+long getTimeDiff(long startTime, long endTime = 0) {
+    if (endTime == 0) {
+        endTime = getTickCount();
+    }
+    long timeDiff = endTime - startTime;
+    if (timeDiff < 0) {
+        timeDiff = 0xFFFFFFFF - startTime + endTime + 1;
+    }
+
+    return timeDiff;
+}
+
 
 /**
  * 模拟事务
@@ -211,13 +275,19 @@ string getSocketIPPort(SOCKET &connSocket) {
  * @param milliseconds 毫秒
  */
 void cpuRun(int milliseconds) {
+#ifdef WIN32
     DWORD startTime = GetTickCount();
     while (1) {
         if (GetTickCount() - startTime > milliseconds) {
             break;
         }
     }
+#else
+
+#endif
 }
+
+#ifdef WIN32
 
 /**
  * 初始化 socket 调用环境
@@ -261,3 +331,30 @@ void initWSA(int a = 2, int b = 2) {
 }
 
 #endif
+
+
+/**
+ * 获取本机 IP
+ */
+string getLocalIP() {
+    string myIP("127.0.0.1");
+
+    do {
+        initWSA();
+
+        char local[255] = {0};
+        gethostname(local, sizeof(local));
+        hostent* ph = gethostbyname(local);
+        if (ph == NULL) {
+            err("gethostbyname failed\n");
+            break;
+        }
+
+        // FIXME 获取所有IP
+        in_addr addr;
+        memcpy(&addr, ph->h_addr_list[0], sizeof(in_addr)); // 这里仅获取第一个ip
+        myIP = inet_ntoa(addr);
+    } while (0);
+
+    return myIP;
+}

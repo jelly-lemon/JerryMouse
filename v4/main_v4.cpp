@@ -2,7 +2,7 @@
 #error only Windows support IOCP.
 #endif
 #include <string>
-#include "MiniWebServer.cpp"
+#include "MiniWebServer_v4.cpp"
 
 #ifdef __GNUC__
 #include <getopt.h>
@@ -12,7 +12,7 @@
 using namespace std;
 
 // 基础配置
-string HttpResponse::rootDir = "D:/0-2-CLion/MiniWebServer/web_root";   // 资源根目录
+string HttpResponse::rootDir = "D:/0-2-CLion/MiniWebServer_v4/web_root";   // 资源根目录
 
 
 
@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
     Logger(true, true);
 
     // 根据输入的参数启动服务端
-    MiniWebServer server;
+    MiniWebServer_v4 server;
     server.startServer(port, backlog, ip);
 
     return 0;

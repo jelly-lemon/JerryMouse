@@ -12,17 +12,60 @@ using namespace std;
  * 对服务端封装成类
  */
 class MiniWebServer {
+private:
+    unsigned int connectionNumber;
+
+    static mutex numLock;
+
+
 protected:
     static void showAcceptSocketIPPort(SOCKET acceptSocket);
 
     SOCKET createListenSocket(int port, int backlog, string &ip);
 
 
+
+
 public:
+    MiniWebServer(): connectionNumber(0) {
+
+    }
 
     virtual void startServer(int port, string ip, int backlog) = 0;
+
+    virtual void showUsage() = 0;
+
+    void addConnectionNumber();
+
+    void subConnectionNumber();
+
+    int getConnectionNumber();
+
+
 };
 
+
+mutex MiniWebServer::numLock;
+
+
+
+/**
+ * 现有连接数量加 1
+ */
+void MiniWebServer::addConnectionNumber() {
+    lock_guard<mutex> guarder(numLock);
+    connectionNumber++;
+    info(" addConnectionNumber: %d\n", connectionNumber);
+}
+
+/**
+ * 现有连接数量减 1
+ */
+void MiniWebServer::subConnectionNumber() {
+    lock_guard<mutex> guarder(numLock);
+    connectionNumber--;
+    info(" subConnectionNumber: %d\n", connectionNumber);
+}
 
 /**
  * 打印 acceptSocket 监听的 IP 和端口
@@ -97,6 +140,11 @@ SOCKET MiniWebServer::createListenSocket(int port, int backlog, string &ip) {
     info(" waiting for connection...\n");
 
     return acceptSocket;
+}
+
+int MiniWebServer::getConnectionNumber() {
+    lock_guard<mutex> lockGuard(numLock);
+    return connectionNumber;
 }
 
 

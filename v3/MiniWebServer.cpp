@@ -1,4 +1,4 @@
-// 本文件包含了处理连接的子线程函数、MiniWebServer 类
+// 本文件包含了处理连接的子线程函数、MiniWebServer_v4 类
 #pragma once
 
 #include <sys/socket.h>
@@ -20,7 +20,7 @@ using namespace std;
 /**
  * 对服务端封装成类
  */
-class MiniWebServer {
+class MiniWebServer_v4 {
 private:
     ThreadPool threadPool;  // 线程池对象
 
@@ -28,7 +28,7 @@ private:
 
 
 public:
-    explicit MiniWebServer(int poolSize = 30) : threadPool(poolSize) {
+    explicit MiniWebServer_v4(int poolSize = 30) : threadPool(poolSize) {
         initWSA();
     }
 
@@ -40,7 +40,7 @@ public:
 };
 
 
-void MiniWebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
+void MiniWebServer_v4::showAcceptSocketIPPort(SOCKET acceptSocket) {
     string acceptIPPort = getAcceptIPPort(acceptSocket);
     if (!acceptIPPort.empty()) {
         info("server listen at %s\n", acceptIPPort.c_str())
@@ -56,7 +56,7 @@ void MiniWebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
  * @param maxSocketNumber
  * @param ip
  */
-SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string ip) {
+SOCKET MiniWebServer_v4::createListenSocket(int port, int maxSocketNumber, string ip) {
     //
     // 创建监听 socket
     //
@@ -112,7 +112,7 @@ SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string i
  * @param port 监听端口
  * @param maxSocketNumber 最大监听 socket 数量
 */
-void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
+void MiniWebServer_v4::startServer(int port, int maxSocketNumber, string ip) {
     //
     // 创建监听 socket
     //
@@ -184,9 +184,9 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
                 }
             } else if (events[i].events & EPOLLIN){
                 // 将 socket 放入任务队列中
-                bool rt = threadPool.submit(events[i].data.fd);
+                bool rt = threadPool.submitTask(events[i].data.fd);
                 if (!rt) {
-                    err("submit failed, TaskQueue is full, close socket.\n");
+                    err("submitTask failed, TaskQueue is full, close socket.\n");
                     HttpResponse::closeSocket(events[i].data.fd);
                 }
             }

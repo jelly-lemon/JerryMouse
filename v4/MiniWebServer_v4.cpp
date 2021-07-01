@@ -1,4 +1,4 @@
-// 本文件包含了处理连接的子线程函数、MiniWebServer 类
+// 本文件包含了处理连接的子线程函数、MiniWebServer_v4 类
 #pragma once
 
 #ifndef WIN32
@@ -109,14 +109,14 @@ DWORD WINAPI t_worker(LPVOID WorkThreadContext) {
 /**
  * 对服务端封装成类
  */
-class MiniWebServer {
+class MiniWebServer_v4 {
 private:
 
     static string showAcceptSocketIPPort(SOCKET acceptSocket);
 
 
 public:
-    explicit MiniWebServer() {
+    explicit MiniWebServer_v4() {
         initWSA();
     }
 
@@ -129,7 +129,7 @@ public:
 /**
  * 打印 acceptSocket 监听的 IP 和端口
  */
-string MiniWebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
+string MiniWebServer_v4::showAcceptSocketIPPort(SOCKET acceptSocket) {
     sockaddr_in socketAddr = {};
     int len = sizeof(socketAddr);
     getsockname(acceptSocket, (struct sockaddr *) &socketAddr, &len);
@@ -147,7 +147,7 @@ string MiniWebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
  * @param ip
  * @return
  */
-SOCKET MiniWebServer::createListenSocket(int port, int backlog, string ip) {
+SOCKET MiniWebServer_v4::createListenSocket(int port, int backlog, string ip) {
     //
     // 创建监听 socket
     //
@@ -208,7 +208,7 @@ SOCKET MiniWebServer::createListenSocket(int port, int backlog, string ip) {
  * @param port 监听端口
  * @param maxSocketNumber 最大监听 socket 数量
 */
-void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
+void MiniWebServer_v4::startServer(int port, int maxSocketNumber, string ip) {
     //
     // 创建监听 socket
     //
@@ -217,7 +217,7 @@ void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     //
     // 创建完成端口和工作线程
     //
-    int nWorker = getLogicCoresNumber() * 2;
+    int nWorker = getCPULogicCoresNumber() * 2;
     g_hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, nWorker);
     for (int i = 0; i < nWorker; ++i) {
         HANDLE hThread;

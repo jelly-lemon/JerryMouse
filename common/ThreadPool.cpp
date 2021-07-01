@@ -1,13 +1,12 @@
-// 本文件包含了 ThreadPool 类、传给子线程的参数结构体 ThreadArgs
 #pragma once
 
 #include <thread>
+#include <functional>
 #include "HttpResponse.cpp"
 #include "SyncQueue.cpp"
 #include "Logger.cpp"
 
 using namespace std;
-
 
 /**
  * 对线程池封装成类
@@ -17,23 +16,22 @@ private:
     int poolSize;       // 线程池容量
     mutex m_mutex;
     int currentThreadNumber;
-    SyncQueue<SOCKET> socketQueue;  // 任务队列
-
+    SyncQueue<SOCKET> taskQueue;  // 任务队列
+    function<void()> onTaskFinishedCallback;
 
 public:
 
     /**
      * 线程池初始化
      */
-    explicit ThreadPool(int poolSize = 0): poolSize(poolSize), currentThreadNumber(0){
+    explicit ThreadPool(int poolSize = 0):
+    poolSize(poolSize), currentThreadNumber(0), onTaskFinishedCallback(NULL){
         if (poolSize == 0) {
-            this->poolSize = getLogicCoresNumber() + 1;
+            this->poolSize = getCPULogicCoresNumber() + 1;
         }
     }
 
-    static void *worker_main(void *args);
-
-    bool submit(SOCKET connSocket);
+    bool submitTask(SOCKET connSocket);
 
     void createNewThread();
 
@@ -41,7 +39,9 @@ public:
 
     void onWorkerFinished();
 
-    static void handleSocket(SOCKET connSocket);
+    void setOnTaskFinishedCallback(function<void()> onTaskFinishedCallback);
+
+    static void *worker_main(void *args);
 };
 
 
@@ -58,11 +58,16 @@ void *ThreadPool::worker_main(void *args) {
     //
     // 取任务并执行
     //
-    auto *p_threadPool = (ThreadPool *)args;
+    auto *pThreadPool = (ThreadPool *)args;
+    info("worker number: %d\n", pThreadPool->currentThreadNumber);
     while (true) {
         try {
-            SOCKET connSocket = p_threadPool->getTask();
-            ThreadPool::handleSocket(connSocket);
+            SOCKET connSocket = pThreadPool->getTask();
+            HttpResponse response(connSocket);
+            response.handleRequest();
+            if (pThreadPool->onTaskFinishedCallback != NULL) {
+                pThreadPool->onTaskFinishedCallback();
+            }
         } catch(exception &e) {
             info("worker finished: %s\n", e.what());
             break;
@@ -72,7 +77,7 @@ void *ThreadPool::worker_main(void *args) {
     //
     // 退出线程
     //
-    p_threadPool->onWorkerFinished();
+    pThreadPool->onWorkerFinished();
 
     return NULL;
 }
@@ -82,8 +87,9 @@ void *ThreadPool::worker_main(void *args) {
  *
  * @return: 提交成功或失败
  */
-bool ThreadPool::submit(SOCKET connSocket) {
-    if (socketQueue.put(connSocket)) {
+bool ThreadPool::submitTask(SOCKET connSocket) {
+    if (taskQueue.put(connSocket)) {
+        info(" task size: %d\n", taskQueue.getSize());
         lock_guard<mutex> guard(m_mutex);
         if (currentThreadNumber < poolSize) {
             createNewThread();
@@ -107,7 +113,7 @@ void ThreadPool::createNewThread() {
  * 获取任务
  */
 SOCKET ThreadPool::getTask() {
-    return socketQueue.get();
+    return taskQueue.get();
 }
 
 /**
@@ -118,15 +124,12 @@ void ThreadPool::onWorkerFinished() {
     currentThreadNumber--;
 }
 
-/**
- * 处理连接 socket
- *
- * @param connSocket
- */
-void ThreadPool::handleSocket(SOCKET connSocket) {
-    HttpResponse response(connSocket);
-    response.handleRequest();
+void ThreadPool::setOnTaskFinishedCallback(function<void()> onTaskFinishedCallback) {
+    this->onTaskFinishedCallback = onTaskFinishedCallback;
 }
+
+
+
 
 
 
