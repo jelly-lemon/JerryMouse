@@ -1,6 +1,6 @@
 #include <csignal>
 #include "../common/HttpResponse.cpp"
-#include "MiniWebServer_v2.cpp"
+#include "MiniWebServer_v2_1.cpp"
 #include "../common/util.cpp"
 using namespace std;
 
@@ -14,6 +14,7 @@ int main() {
     bool asyncLog = true;
     bool printInfo = false;
     bool writeToFile = true;
+    bool isCleanOldLogFile = true;
     int port = 80;
     string ip = "10.66.38.27";
     int backlog = 65535;
@@ -36,8 +37,8 @@ int main() {
     // 启动服务端
     //
     HttpResponse::rootDir = webRoot;   // 资源根目录
-    Logger logger(asyncLog, printInfo, writeToFile);  // 创建日志对象
-    MiniWebServer_v2 server(poolSize);
+    Logger logger(asyncLog, printInfo, writeToFile, isCleanOldLogFile);  // 创建日志对象
+    MiniWebServer_v2_1 server(poolSize);
     server.startServer(port, ip, backlog);
 
     return 0;

@@ -44,7 +44,7 @@ public:
 
         } else {
             if (m_queue.empty()) {
-                throw runtime_error("Queue is empty\n");
+                throw runtime_error("Queue is empty");
             }
         }
 

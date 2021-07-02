@@ -15,7 +15,7 @@ class ThreadPool {
 private:
     int poolSize;       // 线程池容量
     mutex m_mutex;
-    int currentThreadNumber;
+    int currentWorkerNumber;
     SyncQueue<SOCKET> taskQueue;  // 任务队列
     function<void()> onTaskFinishedCallback;
 
@@ -25,7 +25,7 @@ public:
      * 线程池初始化
      */
     explicit ThreadPool(int poolSize = 0):
-    poolSize(poolSize), currentThreadNumber(0), onTaskFinishedCallback(NULL){
+            poolSize(poolSize), currentWorkerNumber(0), onTaskFinishedCallback(NULL){
         if (poolSize == 0) {
             this->poolSize = getCPULogicCoresNumber() + 1;
         }
@@ -33,7 +33,7 @@ public:
 
     bool submitTask(SOCKET connSocket);
 
-    void createNewThread();
+    int createNewThread();
 
     SOCKET getTask();
 
@@ -53,13 +53,11 @@ public:
  * 子线程函数
  */
 void *ThreadPool::worker_main(void *args) {
-    info(" new worker\n");
-
     //
     // 取任务并执行
     //
     auto *pThreadPool = (ThreadPool *)args;
-    info("worker number: %d\n", pThreadPool->currentThreadNumber);
+    info(" new worker, currentWorkerNumber: %d\n", pThreadPool->currentWorkerNumber);
     while (true) {
         try {
             SOCKET connSocket = pThreadPool->getTask();
@@ -91,8 +89,9 @@ bool ThreadPool::submitTask(SOCKET connSocket) {
     if (taskQueue.put(connSocket)) {
         info(" task size: %d\n", taskQueue.getSize());
         lock_guard<mutex> guard(m_mutex);
-        if (currentThreadNumber < poolSize) {
+        if (currentWorkerNumber < poolSize) {
             createNewThread();
+            currentWorkerNumber++;
         }
         return true;
     }
@@ -103,10 +102,11 @@ bool ThreadPool::submitTask(SOCKET connSocket) {
 /**
  * 创建新线程
  */
-void ThreadPool::createNewThread() {
+int ThreadPool::createNewThread() {
     pthread_t worker;
-    pthread_create(&worker, NULL, ThreadPool::worker_main, (void*)this);
-    currentThreadNumber++;
+    int rt = pthread_create(&worker, NULL, ThreadPool::worker_main, (void*)this);
+
+    return rt;
 }
 
 /**
@@ -121,7 +121,8 @@ SOCKET ThreadPool::getTask() {
  */
 void ThreadPool::onWorkerFinished() {
     lock_guard<std::mutex> guard(m_mutex);
-    currentThreadNumber--;
+    currentWorkerNumber--;
+    info(" onWorkerFinished, currentWorkerNumber: %d\n", currentWorkerNumber);
 }
 
 void ThreadPool::setOnTaskFinishedCallback(function<void()> onTaskFinishedCallback) {

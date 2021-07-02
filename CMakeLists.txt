@@ -19,6 +19,10 @@ target_link_libraries(main_v1 ws2_32.lib)
 add_executable(main_v2 v2/main_v2.cpp)
 target_link_libraries(main_v2 ws2_32.lib)
 
+
+add_executable(main_v2_1 v2_1/main_v2_1.cpp)
+target_link_libraries(main_v2_1 ws2_32.lib)
+
 add_executable(main_v3 v3/main_v3.cpp)
 
 add_executable(main_v4 v4/main_v4.cpp)

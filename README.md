@@ -25,9 +25,9 @@ C++ 开发，windows 平台下迷你 web/http 后台。
 
 CPU：i7-7700 3.60GHz
 
-内存  8.00 GB (2667 MHz)
+内存：8.00 GB (2667 MHz)
 
-主硬盘  2000 GB (希捷 ST2000DM006)
+主硬盘：2000 GB (希捷 ST2000DM006)
 
 
 
@@ -41,9 +41,15 @@ CPU：
 
 
 
+测压软件
+
+Webbench 1.5
+
+
+
 ## 对比对象
 
-使用 tomcat/httpd.exe 作为对比的对象。
+使用 Apache/httpd.exe 作为对比的对象。
 
 
 
@@ -63,15 +69,16 @@ IDE：CLion
 
 编译器：mingw64-x86_64-8.1.0-release-posix-sjlj-rt_v6-rev0
 
-运行平台：Windows 10
+开发平台：Windows 10
 
 
 
 # 技术特点
 - 异步日志：
 - 线程池：
-- select/epoll：IO 多路复用
+- select/poll/epoll：IO 多路复用
 - IOCP：异步 IO
+- 并发模型：
 
 
 
@@ -138,3 +145,15 @@ A:
 Q: 类 B 回调类 A 的成员函数？
 
 A:
+
+
+
+Q: 在大量短连接且建立连接就立即发送数据的情况下，IO 多路复用对并发处理能力有帮助吗？
+
+A: 
+
+
+
+Q: 当服务端空闲时，把线程挂起还是销毁？
+
+A: 

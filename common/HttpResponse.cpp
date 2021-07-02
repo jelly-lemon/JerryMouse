@@ -88,20 +88,21 @@ string HttpResponse::getRequestData(int recvTimeout) {
         data += buf;
 
         // 判断读取情况
+        char msg[101] = {'\0'};
         if (code == 0) {
             // 客户端主动关闭了
-            throw runtime_error("client closed connection");
+            snprintf(msg, 100, "socket %d closed connection", connSocket);
+            throw runtime_error(msg);
         } else if (code == SOCKET_ERROR) {
             // socket 异常中断或读取超时
-            char msg[101] = {'\0'};
-            int errorCode = WSAGetLastError();
+            int errorCode = getErrorCode();
             if (errorCode == 10060)
                 snprintf(msg, 100, "recv timeout");
             else if (errorCode == 10035) {
                 snprintf(msg, 100, " recv buffer is empty");
                 closesocket(connSocket);
             } else
-                snprintf(msg, 100, "recv ERROR code:%d", errorCode);
+                snprintf(msg, 100, "socket %d recv failed, Err: %s", connSocket, getErrorInfo().c_str());
             throw runtime_error(msg);
         } else {
             // 判断是否收到全部数据
@@ -245,9 +246,9 @@ int HttpResponse::closeSocket(SOCKET &connSocket) {
     string strIpPort = getSocketIPPort(connSocket);
     int n = closesocket(connSocket);
     if (n == SOCKET_ERROR) {
-        err("[socket %s] close socket err, %s\n", strIpPort.c_str(), getErrorInfo().c_str());
+        err("[socket %s] close socket %d err, %s\n", strIpPort.c_str(), connSocket, getErrorInfo().c_str());
     } else {
-        info("[socket %s] we closed socket.\n", strIpPort.c_str());
+        info("[socket %s] we closed socket %d.\n", strIpPort.c_str(), connSocket);
     }
 
     return n;
@@ -282,7 +283,7 @@ int HttpResponse::httpSend(const string &responseLine, const string &responseBod
     //
     int n = send(connSocket, sendData.c_str(), sendData.size(), 0);
     if (n == SOCKET_ERROR) {
-        err("send failed, Err:%s", getErrorInfo().c_str())
+        err("send failed, Err:%s\n", getErrorInfo().c_str())
     }
 
     return n;

@@ -26,7 +26,7 @@ using namespace std;
 
 class Logger {
 private:
-    thread *pWriteThread;
+    thread *pWriteThread{};
     void startWriteFileThread();
 
 
@@ -44,7 +44,7 @@ public:
      * @param writeToFile
      * @param asyncLog 异步日志
      */
-    Logger(bool asyncLog = true, bool printInfo = true, bool writeToFile = true) {
+    explicit Logger(bool asyncLog = true, bool printInfo = true, bool writeToFile = true, bool isCleanOldLogFile = true) {
         Logger::isWriteToFile = writeToFile;
         Logger::isPrintInfo = printInfo;
         Logger::isAsyncLog = asyncLog;
@@ -52,6 +52,11 @@ public:
         if (isAsyncLog) {
             startWriteFileThread();
         }
+
+        if (isCleanOldLogFile) {
+            deleteLogFile();
+        }
+
     }
 
 
@@ -75,6 +80,8 @@ public:
     static void log(string s);
 
     static bool isWriteThreadWorking();
+
+    static void deleteLogFile();
 };
 
 /**
@@ -121,6 +128,16 @@ mutex Logger::printLock;
 void Logger::startWriteFileThread() {
     pWriteThread = new thread(t_write);
     pWriteThread->detach();
+}
+
+/**
+ * TODO 删除日志文件
+ */
+void Logger::deleteLogFile() {
+    string logPath = getLogFilePath();
+//    if () {
+//
+//    }
 }
 
 /**

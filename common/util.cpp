@@ -44,10 +44,16 @@ string getErrorInfo() {
             err_info += "port is in use, can't bind";
             break;
         case WSAENOTSOCK:
-            err_info += "Socket operation on nonsocket";
+            err_info += "WSAENOTSOCK, Socket operation on nonsocket";
             break;
         case WSAETIMEDOUT:
-            err_info += "recv timeout";
+            err_info += "WSAETIMEDOUT, recv timeout";
+            break;
+        case WSAENOTCONN:
+            err_info += "WSAENOTCONN, Socket is not connected";
+            break;
+        case WSAEINVAL:
+            err_info += "WSAEINVAL, Invalid argument";
             break;
         default:
             err_info += to_string(err_code);
@@ -122,13 +128,15 @@ string getFileType(string url) {
  *
  * @param code 退出代码
  */
-void safeExit(int code) {
+void safeExit(int code, string exitInfo = "") {
+    info("exit: %d %s\n", code, exitInfo.c_str())
+
     //
     // 等待日志线程打印所有完所有消息
     //
     while (!Logger::msgQueue.isEmpty()) {
-        Logger::print(&cout, "waiting logger write-thread to finish\n");
-        Sleep(100);
+        info("waiting logger write-thread to finish\n");
+        Sleep(1000);
     }
 
 #ifdef WIN32
