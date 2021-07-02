@@ -1,4 +1,4 @@
-// 本文件包含了处理连接的子线程函数、MiniWebServer_v4 类
+// 本文件包含了处理连接的子线程函数、MiniWebServer 类
 #pragma once
 
 #include <sys/socket.h>
@@ -20,7 +20,7 @@ using namespace std;
 /**
  * 对服务端封装成类
  */
-class MiniWebServer_v4 {
+class MiniWebServer {
 private:
     ThreadPool threadPool;  // 线程池对象
 
@@ -28,7 +28,7 @@ private:
 
 
 public:
-    explicit MiniWebServer_v4(int poolSize = 30) : threadPool(poolSize) {
+    explicit MiniWebServer(int poolSize = 30) : threadPool(poolSize) {
         initWSA();
     }
 
@@ -40,7 +40,7 @@ public:
 };
 
 
-void MiniWebServer_v4::showAcceptSocketIPPort(SOCKET acceptSocket) {
+void MiniWebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
     string acceptIPPort = getAcceptIPPort(acceptSocket);
     if (!acceptIPPort.empty()) {
         info("server listen at %s\n", acceptIPPort.c_str())
@@ -56,7 +56,7 @@ void MiniWebServer_v4::showAcceptSocketIPPort(SOCKET acceptSocket) {
  * @param maxSocketNumber
  * @param ip
  */
-SOCKET MiniWebServer_v4::createListenSocket(int port, int maxSocketNumber, string ip) {
+SOCKET MiniWebServer::createListenSocket(int port, int maxSocketNumber, string ip) {
     //
     // 创建监听 socket
     //
@@ -112,7 +112,7 @@ SOCKET MiniWebServer_v4::createListenSocket(int port, int maxSocketNumber, strin
  * @param port 监听端口
  * @param maxSocketNumber 最大监听 socket 数量
 */
-void MiniWebServer_v4::startServer(int port, int maxSocketNumber, string ip) {
+void MiniWebServer::startServer(int port, int maxSocketNumber, string ip) {
     //
     // 创建监听 socket
     //
@@ -159,7 +159,9 @@ void MiniWebServer_v4::startServer(int port, int maxSocketNumber, string ip) {
             // 如果是监听 socket
             if (fd == acceptSocket) {
                 while (true) {
+                    //
                     // 获取连接 socket
+                    //
                     sockaddr clientAddr;
                     socklen_t addrLen = sizeof(sockaddr);
                     int connSocket = accept(acceptSocket, &clientAddr, &addrLen);
@@ -170,7 +172,9 @@ void MiniWebServer_v4::startServer(int port, int maxSocketNumber, string ip) {
                         break;
                     }
 
+                    //
                     // 将新 socket 加入到监听列表中
+                    //
                     if (setNonBlocking(connSocket) == -1) {
                         err("setNonBlocking failed, Err:%s\n", getErrorInfo().c_str());
                         continue;
@@ -183,10 +187,12 @@ void MiniWebServer_v4::startServer(int port, int maxSocketNumber, string ip) {
                     }
                 }
             } else if (events[i].events & EPOLLIN){
+                //
                 // 将 socket 放入任务队列中
-                bool rt = threadPool.submitTask(events[i].data.fd);
+                //
+                bool rt = threadPool.submit(events[i].data.fd);
                 if (!rt) {
-                    err("submitTask failed, TaskQueue is full, close socket.\n");
+                    err("submit failed, TaskQueue is full, close socket.\n");
                     HttpResponse::closeSocket(events[i].data.fd);
                 }
             }
