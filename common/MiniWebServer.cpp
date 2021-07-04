@@ -33,7 +33,7 @@ public:
 
     virtual void startServer(int port, string ip, int backlog) = 0;
 
-    virtual void showUsage() = 0;
+    virtual void showUsage();
 
     void addConnectionNumber();
 
@@ -72,7 +72,11 @@ void MiniWebServer::subConnectionNumber() {
  */
 void MiniWebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
     sockaddr_in socketAddr = {};
+#ifdef WIN32
     int len = sizeof(socketAddr);
+#else
+    socklen_t len = sizeof(socketAddr);
+#endif
     int rt = getsockname(acceptSocket, (struct sockaddr *) &socketAddr, &len);
     // TODO 检查 rt 合法性
     string listenIpPort = string(inet_ntoa(socketAddr.sin_addr)) + ":" + to_string(ntohs(socketAddr.sin_port));
@@ -96,6 +100,7 @@ SOCKET MiniWebServer::createListenSocket(int port, int backlog, string &ip) {
     // INADDR_ANY 表示监听所有网卡，也就是本机所有 IP 地址
     //
     // ---------------------------------------------------
+#ifdef WIN32
     SOCKADDR_IN addrSrv;
     if (ip.empty() || ip == "0.0.0.0")
         addrSrv.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
@@ -118,6 +123,31 @@ SOCKET MiniWebServer::createListenSocket(int port, int backlog, string &ip) {
         err(" bind port %d failed, Err:%s\n", port, getErrorInfo().c_str())
         safeExit(-1);
     }
+#else
+    sockaddr_in addrSrv;
+    if (ip.empty() || ip == "0.0.0.0")
+        addrSrv.sin_addr.s_addr = htonl(INADDR_ANY);
+    else if (ip == "localhost" || ip == "127.0.0.1") {
+        addrSrv.sin_addr.s_addr = inet_addr("127.0.0.1");
+    } else {
+        // TODO 检查 IP 合法性
+        addrSrv.sin_addr.s_addr = inet_addr(ip.c_str());
+    }
+    addrSrv.sin_family = AF_INET;
+    // TODO 检查端口合法性
+    addrSrv.sin_port = htons(port);
+    SOCKET acceptSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+    //
+    // 绑定监听端口
+    //
+    int n = bind(acceptSocket, (sockaddr *) &addrSrv, sizeof(sockaddr));
+    if (n == SOCKET_ERROR) {
+        err(" bind port %d failed, Err:%s\n", port, getErrorInfo().c_str())
+        safeExit(-1);
+    }
+#endif
+
 
     //
     // 开始监听请求
@@ -145,6 +175,10 @@ SOCKET MiniWebServer::createListenSocket(int port, int backlog, string &ip) {
 int MiniWebServer::getConnectionNumber() {
     lock_guard<mutex> lockGuard(numLock);
     return connectionNumber;
+}
+
+void MiniWebServer::showUsage() {
+
 }
 
 

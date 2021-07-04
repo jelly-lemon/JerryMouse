@@ -58,7 +58,7 @@ public:
 //
 // 静态变量初始化
 //
-string HttpResponse::rootDir;
+string HttpResponse::rootDir = "../web_root";
 
 
 /**
@@ -94,16 +94,8 @@ string HttpResponse::getRequestData(int recvTimeout) {
             snprintf(msg, 100, "socket %d closed connection", connSocket);
             throw runtime_error(msg);
         } else if (code == SOCKET_ERROR) {
-            // socket 异常中断或读取超时
-            int errorCode = getErrorCode();
-            if (errorCode == 10060)
-                snprintf(msg, 100, "recv timeout");
-            else if (errorCode == 10035) {
-                snprintf(msg, 100, " recv buffer is empty");
-                closesocket(connSocket);
-            } else
-                snprintf(msg, 100, "socket %d recv failed, Err: %s", connSocket, getErrorInfo().c_str());
-            throw runtime_error(msg);
+            string errInfo = getErrorInfo();
+            throw runtime_error(errInfo);
         } else {
             // 判断是否收到全部数据
             if (HttpRequest::isAllData(data))
@@ -244,12 +236,17 @@ void HttpResponse::handleRequest(string rawData) {
  */
 int HttpResponse::closeSocket(SOCKET &connSocket) {
     string strIpPort = getSocketIPPort(connSocket);
+#ifdef WIN32
     int n = closesocket(connSocket);
     if (n == SOCKET_ERROR) {
         err("[socket %s] close socket %d err, %s\n", strIpPort.c_str(), connSocket, getErrorInfo().c_str());
     } else {
         info("[socket %s] we closed socket %d.\n", strIpPort.c_str(), connSocket);
     }
+#else
+    int n = close(connSocket);
+#endif
+
 
     return n;
 }
@@ -282,9 +279,12 @@ int HttpResponse::httpSend(const string &responseLine, const string &responseBod
     // 发送数据到客户端
     //
     int n = send(connSocket, sendData.c_str(), sendData.size(), 0);
+#ifdef WIN32
     if (n == SOCKET_ERROR) {
         err("send failed, Err:%s\n", getErrorInfo().c_str())
     }
+#else
+#endif
 
     return n;
 }

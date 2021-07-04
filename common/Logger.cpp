@@ -11,11 +11,15 @@
 #include <ctime>
 #include <fstream>
 #include <thread>
+#include <stdarg.h>
 #include "SyncQueue.cpp"
+#include "OS_util.cpp"
 
 
 #ifdef linux
 #include <sys/io.h>
+#include <sys/stat.h>
+
 #elif WIN32
 #include <windows.h>
 #include <io.h>
@@ -328,7 +332,7 @@ string Logger::getPrefix() {
     // 线程 id
     //
     char sTid[21];
-    snprintf(sTid, 20, "[tid %d]", GetCurrentThreadId());
+    snprintf(sTid, 20, "[tid %d]", getThreadID());
 
     string s = sTime + sTid;
     return s;
@@ -360,7 +364,12 @@ string Logger::getLogFilePath() {
     // 创建日志目录
     //
     string logDir("./log");
+#ifdef WIN32
     int nRet = CreateDirectory(logDir.c_str(), NULL);  // 创建目录（该函数不可递归，只能创建终极目录）
+#else
+    // 权限为0777，即拥有者权限为读、写、执行
+    int nRet = mkdir(logDir.c_str(), 0777);
+#endif
 
     //
     // 返回日志文件路径
@@ -388,9 +397,9 @@ string Logger::getCurrentTime() {
     // -----------------------------------
     time(&t);
     lt = localtime(&t);
-    sprintf_s(s, "%d/%02d/%02d %02d:%02d:%02d", lt->tm_year + 1900, lt->tm_mon, lt->tm_mday,
-              lt->tm_hour, lt->tm_min, lt->tm_sec);
-    return s;
+    string sTime = getFormattedStr("%d/%02d/%02d %02d:%02d:%02d", lt->tm_year + 1900, lt->tm_mon, lt->tm_mday,
+                    lt->tm_hour, lt->tm_min, lt->tm_sec);
+    return sTime;
 }
 
 

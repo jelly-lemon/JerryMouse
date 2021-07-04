@@ -103,10 +103,10 @@ bool ThreadPool::submitTask(SOCKET connSocket) {
  * 创建新线程
  */
 int ThreadPool::createNewThread() {
-    pthread_t worker;
-    int rt = pthread_create(&worker, NULL, ThreadPool::worker_main, (void*)this);
+    thread worker(&ThreadPool::worker_main, this);
 
-    return rt;
+
+    return 0;
 }
 
 /**

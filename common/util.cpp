@@ -9,6 +9,7 @@ typedef int SOCKET;
 
 #include <sstream>
 #include <cstring>
+#include "OS_util.cpp"
 #include "Logger.cpp"
 
 
@@ -54,6 +55,12 @@ string getErrorInfo() {
             break;
         case WSAEINVAL:
             err_info += "WSAEINVAL, Invalid argument";
+            break;
+        case WSAETIMEDOUT:
+            err_info += "WSAETIMEDOUT, Connection timed out";
+            break;
+        case WSAEWOULDBLOCK:
+            err_info += "WSAEWOULDBLOCK, Resource temporarily unavailable";
             break;
         default:
             err_info += to_string(err_code);
@@ -347,6 +354,7 @@ void initWSA(int a = 2, int b = 2) {
 string getLocalIP() {
     string myIP("127.0.0.1");
 
+#ifdef WIN32
     do {
         initWSA();
 
@@ -363,6 +371,10 @@ string getLocalIP() {
         memcpy(&addr, ph->h_addr_list[0], sizeof(in_addr)); // 这里仅获取第一个ip
         myIP = inet_ntoa(addr);
     } while (0);
+#else
+
+#endif
 
     return myIP;
 }
+
