@@ -1,5 +1,10 @@
 #pragma once
 
+#ifdef WIN32
+#include <windows.h>
+#else
+#endif
+
 int getThreadID() {
     int id = 0;
 #ifdef WIN32

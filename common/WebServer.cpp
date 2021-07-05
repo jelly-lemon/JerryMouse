@@ -4,14 +4,20 @@
 #include <string>
 #include "CrossPlatform.h"
 #include "Logger.cpp"
+#include "util.cpp"
+#include "HttpResponse.cpp"
 
+#ifdef WIN32
+#include <winsock2.h>
+#else
+#endif
 using namespace std;
 
 
 /**
  * 对服务端封装成类
  */
-class MiniWebServer {
+class WebServer {
 private:
     unsigned int connectionNumber;
 
@@ -27,7 +33,7 @@ protected:
 
 
 public:
-    MiniWebServer(): connectionNumber(0) {
+    WebServer(): connectionNumber(0) {
 
     }
 
@@ -45,14 +51,14 @@ public:
 };
 
 
-mutex MiniWebServer::numLock;
+mutex WebServer::numLock;
 
 
 
 /**
  * 现有连接数量加 1
  */
-void MiniWebServer::addConnectionNumber() {
+void WebServer::addConnectionNumber() {
     lock_guard<mutex> guarder(numLock);
     connectionNumber++;
     info(" addConnectionNumber: %d\n", connectionNumber);
@@ -61,7 +67,7 @@ void MiniWebServer::addConnectionNumber() {
 /**
  * 现有连接数量减 1
  */
-void MiniWebServer::subConnectionNumber() {
+void WebServer::subConnectionNumber() {
     lock_guard<mutex> guarder(numLock);
     connectionNumber--;
     info(" subConnectionNumber: %d\n", connectionNumber);
@@ -70,7 +76,7 @@ void MiniWebServer::subConnectionNumber() {
 /**
  * 打印 acceptSocket 监听的 IP 和端口
  */
-void MiniWebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
+void WebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
     sockaddr_in socketAddr = {};
 #ifdef WIN32
     int len = sizeof(socketAddr);
@@ -91,7 +97,7 @@ void MiniWebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
  * @param ip
  * @return
  */
-SOCKET MiniWebServer::createListenSocket(int port, int backlog, string &ip) {
+SOCKET WebServer::createListenSocket(int port, int backlog, string &ip) {
     //
     // 创建监听 socket
     //
@@ -114,6 +120,7 @@ SOCKET MiniWebServer::createListenSocket(int port, int backlog, string &ip) {
     // TODO 检查端口合法性
     addrSrv.sin_port = htons(port);
     SOCKET acceptSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
+    info(" acceptSocket: %d\n", acceptSocket);
 
     //
     // 绑定监听端口
@@ -172,12 +179,12 @@ SOCKET MiniWebServer::createListenSocket(int port, int backlog, string &ip) {
     return acceptSocket;
 }
 
-int MiniWebServer::getConnectionNumber() {
+int WebServer::getConnectionNumber() {
     lock_guard<mutex> lockGuard(numLock);
     return connectionNumber;
 }
 
-void MiniWebServer::showUsage() {
+void WebServer::showUsage() {
 
 }
 

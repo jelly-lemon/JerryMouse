@@ -1,10 +1,12 @@
 #pragma once
 
-#ifdef linux
+
+#ifdef WIN32
+#include "winsock2.h"
+#include "windows.h"
+#elif linux
 #include <unistd.h>
 typedef int SOCKET;
-#elif WIN32
-#include "winsock2.h"
 #endif
 
 #include <sstream>
@@ -46,9 +48,6 @@ string getErrorInfo() {
             break;
         case WSAENOTSOCK:
             err_info += "WSAENOTSOCK, Socket operation on nonsocket";
-            break;
-        case WSAETIMEDOUT:
-            err_info += "WSAETIMEDOUT, recv timeout";
             break;
         case WSAENOTCONN:
             err_info += "WSAENOTCONN, Socket is not connected";

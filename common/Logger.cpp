@@ -7,6 +7,15 @@
 
 #pragma once
 
+#ifdef WIN32
+#include <winsock2.h>
+#include <windows.h>
+#include <io.h>
+#elif linux
+#include <sys/io.h>
+#include <sys/stat.h>
+#endif
+
 #include <iostream>
 #include <ctime>
 #include <fstream>
@@ -16,14 +25,8 @@
 #include "OS_util.cpp"
 
 
-#ifdef linux
-#include <sys/io.h>
-#include <sys/stat.h>
 
-#elif WIN32
-#include <windows.h>
-#include <io.h>
-#endif
+
 
 
 using namespace std;

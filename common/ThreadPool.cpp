@@ -11,12 +11,13 @@ using namespace std;
 /**
  * 对线程池封装成类
  */
+template<class QueueElement>
 class ThreadPool {
 private:
     int poolSize;       // 线程池容量
-    mutex m_mutex;
+    mutex mutexWorkerNumber;
     int currentWorkerNumber;
-    SyncQueue<SOCKET> taskQueue;  // 任务队列
+    SyncQueue<QueueElement> taskQueue;  // 任务队列
     function<void()> onTaskFinishedCallback;
 
 public:
@@ -29,19 +30,23 @@ public:
         if (poolSize == 0) {
             this->poolSize = getCPULogicCoresNumber() + 1;
         }
+        info(" poolSize: %d\n", this->poolSize);
     }
 
-    bool submitTask(SOCKET connSocket);
+    bool submitTask(QueueElement task);
 
-    int createNewThread();
 
-    SOCKET getTask();
+    QueueElement getTask();
 
-    void onWorkerFinished();
 
     void setOnTaskFinishedCallback(function<void()> onTaskFinishedCallback);
 
-    static void *worker_main(void *args);
+    static void *worker_main(ThreadPool *pThreadPool);
+
+    void subWorkerNumber();
+
+    void addWorkerNumber();
+
 };
 
 
@@ -52,22 +57,26 @@ public:
 /**
  * 子线程函数
  */
-void *ThreadPool::worker_main(void *args) {
+template<class QueueElement>
+void* ThreadPool<QueueElement>::worker_main(ThreadPool<QueueElement> *pThreadPool) {
     //
     // 取任务并执行
     //
-    auto *pThreadPool = (ThreadPool *)args;
-    info(" new worker, currentWorkerNumber: %d\n", pThreadPool->currentWorkerNumber);
+    pThreadPool->addWorkerNumber();
     while (true) {
         try {
-            SOCKET connSocket = pThreadPool->getTask();
+            QueueElement element = pThreadPool->getTask();
+            SOCKET connSocket = element.first;
+            long acceptedTime = element.second;
+            info("[socket %s] socket %d wait time: %d ms\n", getSocketIPPort(connSocket).c_str(), connSocket,
+                 getTimeDiff(acceptedTime));
             HttpResponse response(connSocket);
             response.handleRequest();
             if (pThreadPool->onTaskFinishedCallback != NULL) {
                 pThreadPool->onTaskFinishedCallback();
             }
         } catch(exception &e) {
-            info("worker finished: %s\n", e.what());
+            info(" worker finished, info: %s\n", e.what());
             break;
         }
     }
@@ -75,7 +84,7 @@ void *ThreadPool::worker_main(void *args) {
     //
     // 退出线程
     //
-    pThreadPool->onWorkerFinished();
+    pThreadPool->subWorkerNumber();
 
     return NULL;
 }
@@ -85,13 +94,13 @@ void *ThreadPool::worker_main(void *args) {
  *
  * @return: 提交成功或失败
  */
-bool ThreadPool::submitTask(SOCKET connSocket) {
-    if (taskQueue.put(connSocket)) {
+template<class QueueElement>
+bool ThreadPool<QueueElement>::submitTask(QueueElement task) {
+    if (taskQueue.put(task)) {
         info(" task size: %d\n", taskQueue.getSize());
-        lock_guard<mutex> guard(m_mutex);
         if (currentWorkerNumber < poolSize) {
-            createNewThread();
-            currentWorkerNumber++;
+            thread worker(ThreadPool::worker_main, this);
+            worker.detach();
         }
         return true;
     }
@@ -99,36 +108,36 @@ bool ThreadPool::submitTask(SOCKET connSocket) {
     return false;
 }
 
-/**
- * 创建新线程
- */
-int ThreadPool::createNewThread() {
-    thread worker(&ThreadPool::worker_main, this);
-
-
-    return 0;
-}
 
 /**
  * 获取任务
  */
-SOCKET ThreadPool::getTask() {
+template<class QueueElement>
+QueueElement ThreadPool<QueueElement>::getTask() {
     return taskQueue.get();
 }
 
-/**
- * 某个线程结束时，现有线程数量减 1
- */
-void ThreadPool::onWorkerFinished() {
-    lock_guard<std::mutex> guard(m_mutex);
-    currentWorkerNumber--;
-    info(" onWorkerFinished, currentWorkerNumber: %d\n", currentWorkerNumber);
-}
 
-void ThreadPool::setOnTaskFinishedCallback(function<void()> onTaskFinishedCallback) {
+
+template<class QueueElement>
+void ThreadPool<QueueElement>::setOnTaskFinishedCallback(function<void()> onTaskFinishedCallback) {
     this->onTaskFinishedCallback = onTaskFinishedCallback;
 }
 
+
+template<class QueueElement>
+void ThreadPool<QueueElement>::addWorkerNumber() {
+    lock_guard<mutex> lockGuard(mutexWorkerNumber);
+    currentWorkerNumber++;
+    info(" addWorkerNumber: %d\n", currentWorkerNumber);
+}
+
+template<class QueueElement>
+void ThreadPool<QueueElement>::subWorkerNumber() {
+    lock_guard<mutex> lockGuard(mutexWorkerNumber);
+    currentWorkerNumber--;
+    info(" subWorkerNumber: %d\n", currentWorkerNumber);
+}
 
 
 

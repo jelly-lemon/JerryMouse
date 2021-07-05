@@ -10,7 +10,7 @@
 #include <fcntl.h>
 #include "../common/ThreadPool.cpp"
 #include "../common/util.cpp"
-#include "../common/MiniWebServer.cpp"
+#include "../common/WebServer.cpp"
 
 
 #define MAX_EVENTS 10
@@ -21,7 +21,7 @@ using namespace std;
 /**
  * 对服务端封装成类
  */
-class MiniWebServer_v3 : public MiniWebServer{
+class MiniWebServer_v3 : public WebServer{
 private:
     ThreadPool threadPool;  // 线程池对象
 

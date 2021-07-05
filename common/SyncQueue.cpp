@@ -7,10 +7,10 @@
 
 using namespace std;
 
-template <class T>
+template <class QueueElement>
 class SyncQueue {
 private:
-    list<T> m_queue;
+    list<QueueElement> m_queue;
     mutex m_mutex;  // 同步锁
     condition_variable m_notEmpty;    // 条件变量
 
@@ -23,7 +23,7 @@ public:
     /**
      * 放入一条信息
      */
-    bool put(const T x) {
+    bool put(const QueueElement x) {
         unique_lock<mutex> locker(m_mutex);
         m_queue.push_back(x);
         m_notEmpty.notify_one();
@@ -35,11 +35,11 @@ public:
      *
      * @param isBocking: 是否阻塞等待
      */
-    T get(bool isBocking = false) {
+    QueueElement get(bool isBocking = false) {
         unique_lock<mutex> locker(m_mutex);
         if (isBocking) {
             while(m_queue.empty()) {
-                m_notEmpty.wait(locker);    // 解锁 m_mutex，并等待被唤醒
+                m_notEmpty.wait(locker);    // 解锁 mutexWorkerNumber，并等待被唤醒
             }
 
         } else {
@@ -48,7 +48,7 @@ public:
             }
         }
 
-        T x = m_queue.front();
+        QueueElement x = m_queue.front();
         m_queue.pop_front();
 
         return x;

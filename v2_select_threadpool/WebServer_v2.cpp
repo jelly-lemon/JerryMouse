@@ -1,20 +1,21 @@
 #pragma once
 
+#include <winsock2.h>
 #include <string>
 #include <unordered_map>
-#include "../common/MiniWebServer.cpp"
+#include "../common/WebServer.cpp"
 #include "../common/ThreadPool.cpp"
 
 using namespace std;
 
 
-class MiniWebServer_v2_1 : public MiniWebServer {
+class WebServer_v2 : public WebServer {
 private:
-    ThreadPool threadPool;  // 线程池对象
+    ThreadPool<pair<SOCKET, long>> threadPool;  // 线程池对象
     unordered_map<SOCKET, long> acceptedTime;
 
 public:
-    explicit MiniWebServer_v2_1(int poolSize = 0) : threadPool(poolSize) {
+    explicit WebServer_v2(int poolSize = 0) : threadPool(poolSize) {
 #ifdef WIN32
         initWSA();
 #endif
@@ -23,7 +24,7 @@ public:
         //
         // 设置任务完成时回调函数
         //
-        function<void()> callback = bind(&MiniWebServer::subConnectionNumber, this);
+        function<void()> callback = bind(&WebServer::subConnectionNumber, this);
         threadPool.setOnTaskFinishedCallback(callback);
     }
 
@@ -40,7 +41,7 @@ public:
  * @param ip 本机 ip 地址
  * @param backlog 最大监听 socket 数量
 */
-void MiniWebServer_v2_1::startServer(int port, string ip, int backlog) {
+void WebServer_v2::startServer(int port, string ip, int backlog) {
     info(" starting Server...\n")
 
     //
@@ -71,7 +72,6 @@ void MiniWebServer_v2_1::startServer(int port, string ip, int backlog) {
         exceptional_fds = to_be_checked_fds;
         struct timeval selectTimeOut = {};
         selectTimeOut.tv_sec = 1;
-
         int rt = select(0, &readable_fds, NULL, &exceptional_fds, &selectTimeOut);
         if (rt < 0) {
             err("select failed, Err:%s\n", getErrorInfo().c_str());
@@ -80,7 +80,7 @@ void MiniWebServer_v2_1::startServer(int port, string ip, int backlog) {
             }
         } else if (rt == 0) {
             //
-            // select 超时返回
+            // select 超时返回，关闭所有连接 socket
             //
             info("select time out\n");
             for (int i = 0; i < to_be_checked_fds.fd_count; i++) {
@@ -155,10 +155,7 @@ void MiniWebServer_v2_1::startServer(int port, string ip, int backlog) {
                         //
                         // 如果是连接 socket，则表明有可读事件，提交任务
                         //
-                        long waitTime = getTimeDiff(acceptedTime[socket]);
-                        info("[socket %s] socket %d wait time: %d ms\n", getSocketIPPort(socket).c_str(),
-                             socket, waitTime);
-                        if (!threadPool.submitTask(socket)) {
+                        if (!threadPool.submitTask(make_pair(socket, acceptedTime[socket]))) {
                             info("[socket %s] submitTask failed, TaskQueue is full, close socket.\n",
                                  getSocketIPPort(socket).c_str());
                             closesocket(socket);
@@ -186,7 +183,5 @@ void MiniWebServer_v2_1::startServer(int port, string ip, int backlog) {
     }
 }
 
-void MiniWebServer_v2_1::showUsage() {
 
-}
 
