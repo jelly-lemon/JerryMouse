@@ -1,25 +1,32 @@
 #pragma once
 
 #include <ctime>
-#include "EventHandler.h"
+#include <list>
+#include <memory>
 #include "Acceptor.h"
-#include "Handler.h"
+#include "BaseHandler.h"
+#include "EventDemultiplexer.h"
+#include "Event.h"
+
+using namespace std;
 
 class Reactor {
 private:
-    Acceptor acceptor;
-    Handler handler;
+    list<BaseHandler> handlers;
+    unique_ptr<EventDemultiplexer> pDemultiplexer;
+
 
 public:
-    Reactor() {
+    Reactor(EventDemultiplexer *pDemultiplexer): pDemultiplexer(pDemultiplexer) {
 
     }
 
-    void run();
 
-    void handleEvents(timeval *ptv);
 
-    void registerHandler(EventHandler *pHandler, int event);
+    //
+    void handleEvents(int timeout = 0);
 
-    void removeHandler(EventHandler *pHandler, int event);
+    void registerHandler(BaseHandler *pHandler, Event event);
+
+    void removeHandler(BaseHandler *pHandler, Event event);
 };

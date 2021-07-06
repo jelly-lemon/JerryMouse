@@ -1,11 +1,12 @@
 #pragma once
-#include "EventHandler.h"
-#include "Processor.h"
 
-class Handler: public EventHandler {
-private:
-    Processor processor;
+#include "BaseHandler.h"
+#include "Event.h"
+using namespace std;
 
-public:
-    void handleEvents(int events) override;
+/**
+ *
+ */
+class Handler: public BaseHandler{
+
 };

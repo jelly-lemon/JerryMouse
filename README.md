@@ -2,16 +2,43 @@
 
 C++ 开发，windows 平台下迷你 web/http 后台。
 
+功能描述：
 
-
-# 功能描述
 能够响应客户端 HTTP GET 静态资源请求，比如 *.html，图片等。
 
+技术概要：
+
+- 线程同步：互斥锁、使用 lock_guard，在退出作用域时自动释放锁
+- 智能指针：unique_ptr，避免野指针
+- 命令行参数解析：
+- 异步日志：生产者消费者模型
+- 线程池：
+- select/poll/epoll：IO 多路复用
+- IOCP：异步 IO
+- 并发模型：reactor、proactor
+
+# 更新日志
 
 
-# 使用方法
+# 目录说明
 
 
+
+
+
+# 运行方法
+
+Windows/CLion/MinGW-64（我开发使用的工具链，推荐）：即在 Win 10 下，IDE 为 CLion，C++ 编译器为 MinGW-64。
+
+1. 下载和安装 CLion 和 MinGW-64
+
+   CLion 版本无所谓，但编译器版本一定要相同：mingw64-x86_64-8.1.0-release-posix-sjlj-rt_v6-rev0（注意关键字：x86_64、8.1.0、posix、sjlj）
+
+2. 使用 CLion 克隆项目
+
+3. 在 CLion 中配置 C++ 工具链
+
+4. 选择目标运行
 
 
 
@@ -27,7 +54,7 @@ CPU：i7-7700 3.60GHz
 
 内存：8.00 GB (2667 MHz)
 
-主硬盘：2000 GB (希捷 ST2000DM006)
+固态硬盘：Colorful SL300 120GB
 
 
 
@@ -35,9 +62,9 @@ CPU：i7-7700 3.60GHz
 
 操作系统：Centos7 
 
-CPU：
+CPU：1 核
 
-内存：
+内存：1 G
 
 
 
@@ -49,36 +76,43 @@ Webbench 1.5
 
 ## 对比对象
 
-使用 Apache/httpd.exe 作为对比的对象。
+对比实验使用 httpd-2.4.47-win64-VS16/Apache24/bin/httpd.exe 作为对比的对象。Apache HTTP Server 于1995年推出，自1996年4月以来，它一直是互联网上最流行的网络服务器。Apache HTTP Server 官网：https://httpd.apache.org/。
+
+用于测试的网页：http://10.66.38.27/home.html （10.66.38.27 是我的局域网 IP），截图如下：
+
+
+
+整个测试过程为：首先，启动 httpd.exe；其次，打开虚拟机，运行 Centos7；最后，在 Centos7 中运行 Webbench，对 httpd.exe 进行压力测试。
+
+测试结果：
+
+```shell
+[root@VM_1 webbench-1.5]# ./webbench -c3000 -t5 http://10.66.38.27/home.html
+Webbench - Simple Web Benchmark 1.5
+Copyright (c) Radim Kolar 1997-2004, GPL Open Source Software.
+
+Benchmarking: GET http://10.66.38.27/home.html
+3000 clients, running 5 sec.
+
+Speed=360996 pages/min, 2050272 bytes/sec.
+Requests: 7123 susceed, 22960 failed.
+```
+
+其中 -c3000 -t5 表示模拟 3000 个客户端在 5s 内反复访问指定网页。
+
+计算 QPS：
+
+QPS(httpd.exe) = 7123 succeed / 5 sec = 1426，即 QPS 约为 1426。
+
+
+
+## 测试 JerryMouse
+
+测试前的配置：关闭控制台输出、使用 Release 编译
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-# 开发环境
-IDE：CLion
-
-编译器：mingw64-x86_64-8.1.0-release-posix-sjlj-rt_v6-rev0
-
-开发平台：Windows 10
-
-
-
-# 技术特点
-- 异步日志：
-- 线程池：
-- select/poll/epoll：IO 多路复用
-- IOCP：异步 IO
-- 并发模型：
 
 
 
@@ -86,7 +120,17 @@ IDE：CLion
 
 - [ ] URL base64 解析
 
+# 发现 Bug 及优化
 
+因本人能力有限，并且可能存在一些知识误区，所以会出现很多问题。
+
+若你遇到问题或 Bug，欢迎提 issue；
+方法如下：
+
+若你想参与开发及优化代码，欢迎提 Pull Request。
+方法如下：
+
+我将及时做出回复。
 
 # 遇到的问题
 

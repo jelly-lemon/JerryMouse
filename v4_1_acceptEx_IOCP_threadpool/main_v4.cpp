@@ -8,7 +8,7 @@
 using namespace std;
 
 // 基础配置
-string HttpResponse::rootDir = "D:/0-2-CLion/MiniWebServer/web_root";   // 资源根目录
+string HttpResponse::rootDir = "D:/0-2-CLion/JerryMouse/web_root";   // 资源根目录
 
 
 

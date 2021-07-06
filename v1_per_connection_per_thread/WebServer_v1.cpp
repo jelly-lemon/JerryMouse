@@ -3,7 +3,7 @@
 #include <thread>
 #include <functional>
 #include "../common/HttpResponse.cpp"
-#include "../common/WebServer.cpp"
+#include "../common/HttpServer.cpp"
 
 using namespace std;
 

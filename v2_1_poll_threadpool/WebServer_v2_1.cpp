@@ -6,16 +6,16 @@
 #endif
 #include <string>
 #include <unordered_map>
-#include "../common/WebServer.cpp"
+#include "../common/HttpServer.cpp"
 #include "../common/ThreadPool.cpp"
 
 using namespace std;
 
 
-class WebServer_v2_1 : public WebServer {
+class WebServer_v2_1 : public HttpServer {
 private:
     ThreadPool<pair<SOCKET, long>> threadPool;  // 线程池对象
-    unordered_map<SOCKET, long> acceptedTime;
+    unordered_map<SOCKET, long> acceptedTime;   // 记录每一个 socket 的 accept 时间
 
 public:
     explicit WebServer_v2_1(int poolSize = 0) : threadPool(poolSize) {
@@ -27,7 +27,7 @@ public:
         //
         // 设置任务完成时回调函数
         //
-        function<void()> callback = bind(&WebServer::subConnectionNumber, this);
+        function<void()> callback = bind(&HttpServer::subConnectionNumber, this);
         threadPool.setOnTaskFinishedCallback(callback);
     }
 

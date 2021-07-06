@@ -1,6 +1,9 @@
 #pragma once
-#include "EventHandler.h"
+#include "BaseHandler.h"
 
-class Acceptor : public EventHandler {
+/**
+ * 处理连接请求
+ */
+class Acceptor: public BaseHandler{
 
 };

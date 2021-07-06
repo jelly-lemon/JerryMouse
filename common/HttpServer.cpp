@@ -17,7 +17,7 @@ using namespace std;
 /**
  * 对服务端封装成类
  */
-class WebServer {
+class HttpServer {
 private:
     unsigned int connectionNumber;
 
@@ -33,7 +33,7 @@ protected:
 
 
 public:
-    WebServer(): connectionNumber(0) {
+    HttpServer(): connectionNumber(0) {
 
     }
 
@@ -51,14 +51,14 @@ public:
 };
 
 
-mutex WebServer::numLock;
+mutex HttpServer::numLock;
 
 
 
 /**
  * 现有连接数量加 1
  */
-void WebServer::addConnectionNumber() {
+void HttpServer::addConnectionNumber() {
     lock_guard<mutex> guarder(numLock);
     connectionNumber++;
     info(" addConnectionNumber: %d\n", connectionNumber);
@@ -67,7 +67,7 @@ void WebServer::addConnectionNumber() {
 /**
  * 现有连接数量减 1
  */
-void WebServer::subConnectionNumber() {
+void HttpServer::subConnectionNumber() {
     lock_guard<mutex> guarder(numLock);
     connectionNumber--;
     info(" subConnectionNumber: %d\n", connectionNumber);
@@ -76,7 +76,7 @@ void WebServer::subConnectionNumber() {
 /**
  * 打印 acceptSocket 监听的 IP 和端口
  */
-void WebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
+void HttpServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
     sockaddr_in socketAddr = {};
 #ifdef WIN32
     int len = sizeof(socketAddr);
@@ -97,7 +97,7 @@ void WebServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
  * @param ip
  * @return
  */
-SOCKET WebServer::createListenSocket(int port, int backlog, string &ip) {
+SOCKET HttpServer::createListenSocket(int port, int backlog, string &ip) {
     //
     // 创建监听 socket
     //
@@ -179,12 +179,12 @@ SOCKET WebServer::createListenSocket(int port, int backlog, string &ip) {
     return acceptSocket;
 }
 
-int WebServer::getConnectionNumber() {
+int HttpServer::getConnectionNumber() {
     lock_guard<mutex> lockGuard(numLock);
     return connectionNumber;
 }
 
-void WebServer::showUsage() {
+void HttpServer::showUsage() {
 
 }
 

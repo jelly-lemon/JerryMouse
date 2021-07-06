@@ -3,19 +3,19 @@
 #include <winsock2.h>
 #include <string>
 #include <unordered_map>
-#include "../common/WebServer.cpp"
+#include "../common/HttpServer.cpp"
 #include "../common/ThreadPool.cpp"
 
 using namespace std;
 
 
-class WebServer_v2 : public WebServer {
+class HttpServer_v2_2 : public HttpServer {
 private:
     ThreadPool<pair<SOCKET, long>> threadPool;  // 线程池对象
-    unordered_map<SOCKET, long> acceptedTime;
+    unordered_map<SOCKET, long> acceptedTime;   // 哈希表，记录socket 被 accepted 时的时间
 
 public:
-    explicit WebServer_v2(int poolSize = 0) : threadPool(poolSize) {
+    explicit HttpServer_v2_2(int poolSize = 0) : threadPool(poolSize) {
 #ifdef WIN32
         initWSA();
 #endif
@@ -24,7 +24,7 @@ public:
         //
         // 设置任务完成时回调函数
         //
-        function<void()> callback = bind(&WebServer::subConnectionNumber, this);
+        function<void()> callback = bind(&HttpServer::subConnectionNumber, this);
         threadPool.setOnTaskFinishedCallback(callback);
     }
 
@@ -41,7 +41,7 @@ public:
  * @param ip 本机 ip 地址
  * @param backlog 最大监听 socket 数量
 */
-void WebServer_v2::startServer(int port, string ip, int backlog) {
+void HttpServer_v2_2::startServer(int port, string ip, int backlog) {
     info(" starting Server...\n")
 
     //

@@ -2,7 +2,7 @@
 
 #include <string>
 #include "../common/Logger.cpp"
-#include "../common/WebServer.cpp"
+#include "../common/HttpServer.cpp"
 #include "../common/ThreadPool.cpp"
 
 
@@ -12,7 +12,7 @@ using namespace std;
 /**
  * 对服务端封装成类
  */
-class WebServer_v1_1 : public WebServer{
+class WebServer_v1_1 : public HttpServer{
 private:
     ThreadPool<pair<SOCKET, long>> threadPool;
 

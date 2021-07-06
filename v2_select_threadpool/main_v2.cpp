@@ -1,6 +1,6 @@
 #include <csignal>
 #include "../common/HttpResponse.cpp"
-#include "WebServer_v2.cpp"
+#include "HttpServer_v2.cpp"
 #include "../common/util.cpp"
 using namespace std;
 
@@ -38,7 +38,7 @@ int main() {
     //
     HttpResponse::rootDir = webRoot;   // 资源根目录
     Logger logger(asyncLog, printInfo, writeToFile, isCleanOldLogFile);  // 创建日志对象
-    WebServer_v2 server(poolSize);
+    HttpServer_v2_2 server(poolSize);
     server.startServer(port, ip, backlog);
 
     return 0;

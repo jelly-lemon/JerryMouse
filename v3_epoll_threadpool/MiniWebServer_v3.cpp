@@ -10,7 +10,7 @@
 #include <fcntl.h>
 #include "../common/ThreadPool.cpp"
 #include "../common/util.cpp"
-#include "../common/WebServer.cpp"
+#include "../common/HttpServer.cpp"
 
 
 #define MAX_EVENTS 10

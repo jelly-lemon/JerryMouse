@@ -4,8 +4,9 @@ using namespace std;
 int main() {
     Reactor reactor;
 
-    reactor.run();
-
+    while (true) {
+        reactor.handleEvents(3000);
+    }
 
     return 0;
 }

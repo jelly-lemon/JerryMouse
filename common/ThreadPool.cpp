@@ -14,9 +14,9 @@ using namespace std;
 template<class QueueElement>
 class ThreadPool {
 private:
-    int poolSize;       // 线程池容量
-    mutex mutexWorkerNumber;
-    int currentWorkerNumber;
+    int poolSize;                       // 线程池容量
+    mutex mutexWorkerNumber;            // currentWorkerNumber 互斥量
+    int currentWorkerNumber;            // 当前 worker 数量
     SyncQueue<QueueElement> taskQueue;  // 任务队列
     function<void()> onTaskFinishedCallback;
 
