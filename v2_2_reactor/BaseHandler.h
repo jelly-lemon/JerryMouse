@@ -1,18 +1,29 @@
 #pragma once
+
 #include "BaseHandler.h"
-#include "Event.h"
+#include "convention.h"
+
 using namespace std;
 
+
+enum EventType {
+    OP_ACCEPT, OP_READ, OP_WRITE
+};
 
 /**
  * 基类
  */
 class BaseHandler {
+protected:
+    Handle sock_fd;
 
 public:
+    BaseHandler() : sock_fd(0) {}
+
     // 处理事件
     virtual void handleEvent() = 0;
 
-    // 获取 I/O 的 Handle（句柄），实际上就是 socket
-    virtual Handle getHandle() = 0;
+    Handle getHandle() {
+        return sock_fd;
+    }
 };

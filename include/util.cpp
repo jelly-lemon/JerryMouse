@@ -61,6 +61,9 @@ string getErrorInfo() {
         case WSAEWOULDBLOCK:
             err_info += "WSAEWOULDBLOCK, Resource temporarily unavailable";
             break;
+        case WSANOTINITIALISED:
+            err_info += "WSANOTINITIALISED, not WSAStartup";
+            break;
         default:
             err_info += to_string(err_code);
             break;
@@ -183,27 +186,7 @@ int getCPULogicCoresNumber() {
     return n;
 }
 
-/**
- * 获取 acceptSocket 监听的 IP 和端口
- */
-string getAcceptIPPort(SOCKET &acceptSocket) {
-    sockaddr_in acceptAddr;
 
-#ifdef linux
-    socklen_t len = sizeof(acceptAddr);
-#else
-    int len = sizeof(acceptAddr);
-#endif
-
-    string acceptIPPort;
-    if (getsockname(acceptSocket, (struct sockaddr *) &acceptAddr, &len) == 0) {
-        char t[100];
-        sprintf(t, "%s:%d\n", inet_ntoa(acceptAddr.sin_addr), ntohs(acceptAddr.sin_port));
-        acceptIPPort = string(t);
-    }
-
-    return acceptIPPort;
-}
 
 
 /**

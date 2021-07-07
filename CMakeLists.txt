@@ -35,7 +35,10 @@ if(WIN32)
 endif()
 
 
-add_executable(main_v2_2 v2_2_reactor/main_v2_2.cpp)
+add_executable(main_v2_2 v2_2_reactor/main_v2_2.cpp
+        )
+target_include_directories(main_v2_2 PRIVATE include)
+
 if(WIN32)
     target_link_libraries(main_v2_2 ws2_32.lib)
 endif()

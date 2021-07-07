@@ -1,6 +1,6 @@
 #include <iostream>
-#include "common/clipp.h"
-#include "common/util.cpp"
+#include "include/clipp.h"
+#include "include/util.cpp"
 
 using namespace clipp; using std::cout; using std::string;
 

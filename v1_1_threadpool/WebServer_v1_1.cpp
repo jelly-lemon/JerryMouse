@@ -1,9 +1,9 @@
 #pragma once
 
 #include <string>
-#include "../common/Logger.cpp"
-#include "../common/HttpServer.cpp"
-#include "../common/ThreadPool.cpp"
+#include "../include/Logger.cpp"
+#include "../include/http/HttpServer.cpp"
+#include "../include/ThreadPool.cpp"
 
 
 using namespace std;

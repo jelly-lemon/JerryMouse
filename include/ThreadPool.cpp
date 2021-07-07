@@ -2,7 +2,7 @@
 
 #include <thread>
 #include <functional>
-#include "HttpResponse.cpp"
+#include "http/HttpResponse.cpp"
 #include "SyncQueue.cpp"
 #include "Logger.cpp"
 
@@ -26,7 +26,9 @@ public:
      * 线程池初始化
      */
     explicit ThreadPool(int poolSize = 0):
-            poolSize(poolSize), currentWorkerNumber(0), onTaskFinishedCallback(NULL){
+            poolSize(poolSize),
+            currentWorkerNumber(0),
+            onTaskFinishedCallback(NULL){
         if (poolSize == 0) {
             this->poolSize = getCPULogicCoresNumber() + 1;
         }
@@ -41,12 +43,13 @@ public:
 
     void setOnTaskFinishedCallback(function<void()> onTaskFinishedCallback);
 
-    static void *worker_main(ThreadPool *pThreadPool);
-
     void subWorkerNumber();
 
     void addWorkerNumber();
 
+    static void *worker_main(ThreadPool *pThreadPool);
+
+    static void setWorkerFunc(function<void()> workerFunc);
 };
 
 
@@ -138,6 +141,7 @@ void ThreadPool<QueueElement>::subWorkerNumber() {
     currentWorkerNumber--;
     info(" subWorkerNumber: %d\n", currentWorkerNumber);
 }
+
 
 
 

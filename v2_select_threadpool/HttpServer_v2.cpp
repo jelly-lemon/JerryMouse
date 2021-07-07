@@ -3,8 +3,8 @@
 #include <winsock2.h>
 #include <string>
 #include <unordered_map>
-#include "../common/HttpServer.cpp"
-#include "../common/ThreadPool.cpp"
+#include "../include/http/HttpServer.cpp"
+#include "../include/ThreadPool.cpp"
 
 using namespace std;
 

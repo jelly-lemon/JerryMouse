@@ -2,8 +2,8 @@
 
 #include <thread>
 #include <functional>
-#include "../common/HttpResponse.cpp"
-#include "../common/HttpServer.cpp"
+#include "../include/http/HttpResponse.cpp"
+#include "../include/http/HttpServer.cpp"
 
 using namespace std;
 

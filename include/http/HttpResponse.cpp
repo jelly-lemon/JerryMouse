@@ -2,8 +2,8 @@
 
 #include <map>
 #include "HttpRequest.cpp"
-#include "CrossPlatform.h"
-#include "util.cpp"
+#include "../CrossPlatform.h"
+#include "../util.cpp"
 
 using namespace std;
 

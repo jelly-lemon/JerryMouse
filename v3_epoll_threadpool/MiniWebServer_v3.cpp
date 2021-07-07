@@ -8,9 +8,9 @@
 #include <sys/epoll.h>
 #include <string>
 #include <fcntl.h>
-#include "../common/ThreadPool.cpp"
-#include "../common/util.cpp"
-#include "../common/HttpServer.cpp"
+#include "../include/ThreadPool.cpp"
+#include "../include/util.cpp"
+#include "../include/http/HttpServer.cpp"
 
 
 #define MAX_EVENTS 10

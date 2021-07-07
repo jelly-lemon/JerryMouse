@@ -1,93 +1,27 @@
 #pragma once
 
-
-#include <string>
-#include "CrossPlatform.h"
-#include "Logger.cpp"
-#include "util.cpp"
-#include "HttpResponse.cpp"
-
-#ifdef WIN32
-#include <winsock2.h>
-#else
-#endif
-using namespace std;
-
-
 /**
- * 对服务端封装成类
+ * 获取 acceptSocket 监听的 IP 和端口
  */
-class HttpServer {
-private:
-    unsigned int connectionNumber;
+string getAcceptIPPort(SOCKET &acceptSocket) {
+    sockaddr_in acceptAddr;
 
-    static mutex numLock;
+#ifdef linux
+    socklen_t len = sizeof(acceptAddr);
+#else
+    int len = sizeof(acceptAddr);
+#endif
 
-
-protected:
-    static void showAcceptSocketIPPort(SOCKET acceptSocket);
-
-    SOCKET createListenSocket(int port, int backlog, string &ip);
-
-
-
-
-public:
-    HttpServer(): connectionNumber(0) {
-
+    string acceptIPPort;
+    if (getsockname(acceptSocket, (struct sockaddr *) &acceptAddr, &len) == 0) {
+        char t[100];
+        sprintf(t, "%s:%d", inet_ntoa(acceptAddr.sin_addr), ntohs(acceptAddr.sin_port));
+        acceptIPPort = string(t);
     }
 
-    virtual void startServer(int port, string ip, int backlog) = 0;
-
-    virtual void showUsage();
-
-    void addConnectionNumber();
-
-    void subConnectionNumber();
-
-    int getConnectionNumber();
-
-
-};
-
-
-mutex HttpServer::numLock;
-
-
-
-/**
- * 现有连接数量加 1
- */
-void HttpServer::addConnectionNumber() {
-    lock_guard<mutex> guarder(numLock);
-    connectionNumber++;
-    info(" addConnectionNumber: %d\n", connectionNumber);
+    return acceptIPPort;
 }
 
-/**
- * 现有连接数量减 1
- */
-void HttpServer::subConnectionNumber() {
-    lock_guard<mutex> guarder(numLock);
-    connectionNumber--;
-    info(" subConnectionNumber: %d\n", connectionNumber);
-}
-
-/**
- * 打印 acceptSocket 监听的 IP 和端口
- */
-void HttpServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
-    sockaddr_in socketAddr = {};
-#ifdef WIN32
-    int len = sizeof(socketAddr);
-#else
-    socklen_t len = sizeof(socketAddr);
-#endif
-    int rt = getsockname(acceptSocket, (struct sockaddr *) &socketAddr, &len);
-    // TODO 检查 rt 合法性
-    string listenIpPort = string(inet_ntoa(socketAddr.sin_addr)) + ":" + to_string(ntohs(socketAddr.sin_port));
-    info(" server listen at %s\n", listenIpPort.c_str())
-}
 
 /**
  * 创建监听 socket
@@ -97,7 +31,7 @@ void HttpServer::showAcceptSocketIPPort(SOCKET acceptSocket) {
  * @param ip
  * @return
  */
-SOCKET HttpServer::createListenSocket(int port, int backlog, string &ip) {
+SOCKET createListenSocket(int port = 80, string ip = "", int backlog = 65535) {
     //
     // 创建监听 socket
     //
@@ -120,12 +54,11 @@ SOCKET HttpServer::createListenSocket(int port, int backlog, string &ip) {
     // TODO 检查端口合法性
     addrSrv.sin_port = htons(port);
     SOCKET acceptSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
-    info(" acceptSocket: %d\n", acceptSocket);
 
     //
     // 绑定监听端口
     //
-    int n = bind(acceptSocket, (SOCKADDR *) &addrSrv, sizeof(SOCKADDR));
+    int n = bind(acceptSocket, (SOCKADDR * ) & addrSrv, sizeof(SOCKADDR));
     if (n == SOCKET_ERROR) {
         err(" bind port %d failed, Err:%s\n", port, getErrorInfo().c_str())
         safeExit(-1);
@@ -154,6 +87,8 @@ SOCKET HttpServer::createListenSocket(int port, int backlog, string &ip) {
         safeExit(-1);
     }
 #endif
+    info(" acceptSocket: %d\n", acceptSocket);
+    info(" server listen at %s\n", getAcceptIPPort(acceptSocket).c_str());
 
 
     //
@@ -167,7 +102,6 @@ SOCKET HttpServer::createListenSocket(int port, int backlog, string &ip) {
     //-------------------------------------------------------------
     listen(acceptSocket, backlog);
     info(" backlog is %d\n", backlog)
-    showAcceptSocketIPPort(acceptSocket);
     if (port == 80) {
         info(" now, you can visit http://%s to browse homepage.\n", ip.c_str());
     } else {
@@ -178,16 +112,5 @@ SOCKET HttpServer::createListenSocket(int port, int backlog, string &ip) {
 
     return acceptSocket;
 }
-
-int HttpServer::getConnectionNumber() {
-    lock_guard<mutex> lockGuard(numLock);
-    return connectionNumber;
-}
-
-void HttpServer::showUsage() {
-
-}
-
-
 
 
