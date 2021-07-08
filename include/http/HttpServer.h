@@ -22,7 +22,6 @@ class HttpServer {
 private:
     unsigned int connectionNumber;
     mutex numLock;
-    SOCKET acceptSocket;
     int port;
     string ip;
     int backlog;
@@ -30,6 +29,7 @@ private:
 
 
 protected:
+    SOCKET acceptSocket;
 
 
 public:
@@ -51,7 +51,7 @@ public:
 
     SOCKET getAcceptSocket() const;
 
-    void startServer() {
+    virtual void startServer() {
         info(" --------- starting Server ---------\n")
         try {
             info(" web_root dir is %s\n", getAbsPath(HttpServer::rootDir).c_str())

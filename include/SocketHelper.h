@@ -37,7 +37,7 @@ string getAcceptIPPort(SOCKET &acceptSocket) {
  * @param ip
  * @return
  */
-SOCKET createListenSocket(int port = 80, string ip = "", int backlog = 65535, bool isNonBlocking = true) {
+SOCKET createListenSocket(int port = 80, string ip = "", int backlog = 65535) {
     //
     // 创建监听 socket
     //
@@ -98,12 +98,6 @@ SOCKET createListenSocket(int port = 80, string ip = "", int backlog = 65535, bo
 #endif
     info(" acceptSocket: %d\n", acceptSocket);
     info(" server listen at %s\n", getAcceptIPPort(acceptSocket).c_str());
-    if (isNonBlocking) {
-        info(" acceptSocket is NonBlocking mode\n");
-        setNonBlocking(acceptSocket);
-    } else {
-        info(" acceptSocket is Blocking mode\n");
-    }
 
     //
     // 开始监听请求

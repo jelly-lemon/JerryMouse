@@ -39,9 +39,13 @@ endif()
 
 
 add_executable(main_v2_2 v2_2_reactor/main_v2_2.cpp)
-
 if(WIN32)
     target_link_libraries(main_v2_2 ws2_32.lib)
+endif()
+
+add_executable(main_v4_1 v4_1_acceptEx_IOCP_threadpool/main_v4_1.cpp)
+if(WIN32)
+    target_link_libraries(main_v4_1 ws2_32.lib)
 endif()
 
 add_executable(test test.cpp)

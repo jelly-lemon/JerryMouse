@@ -22,8 +22,15 @@ using namespace std;
 /**
  *  将 socket 设置为非阻塞
  */
-int setNonBlocking(SOCKET sockfd) {
+int setNonBlocking(SOCKET sockfd, bool isNonBlocking = true) {
     unsigned long ul = 1;
+    if (isNonBlocking) {
+        info(" set socket %d NonBlocking mode\n", sockfd);
+    } else {
+        info(" set socket %d Blocking mode\n", sockfd);
+    }
+
+
 #ifdef linux
     int rt = fcntl(sockfd, FIONBIO, &ul);
 #else
