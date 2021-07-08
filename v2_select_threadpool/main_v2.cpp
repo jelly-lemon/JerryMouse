@@ -1,7 +1,7 @@
 #include <csignal>
-#include "../include/http/HttpResponse.cpp"
+#include "../include/http/HttpResponse.h"
 #include "HttpServer_v2.cpp"
-#include "../include/util.cpp"
+#include "../include/util.h"
 using namespace std;
 
 

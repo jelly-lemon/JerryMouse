@@ -33,9 +33,8 @@ using namespace std;
 
 class Logger {
 private:
-    thread *pWriteThread{};
+    thread *pWriteThread;
     void startWriteFileThread();
-
 
 public:
     static mutex printLock;
@@ -94,11 +93,11 @@ public:
 /**
  * 静态变量初始化（只能在类外部）
  */
-SyncQueue<string> Logger::msgQueue;
 bool Logger::isWriteToFile = true;
 bool Logger::isPrintInfo = true;
-bool Logger::isAsyncLog = false;
+bool Logger::isAsyncLog = false;    // 默认同步打印
 mutex Logger::printLock;
+SyncQueue<string> Logger::msgQueue;
 
 /**
  * Info 打印

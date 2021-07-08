@@ -5,6 +5,7 @@
 #include "EventDemultiplexer.h"
 #include "convention.h"
 #include "BaseHandler.h"
+#include "Acceptor.h"
 
 class SelectDemultiplexer: public EventDemultiplexer{
 private:
@@ -47,28 +48,32 @@ public:
     }
 
 
-    int waitEvents(unordered_map<Handle, BaseHandler*> &handlers, long timeout) {
+    int waitEvents(unordered_map<Handle, BaseHandler*> &handlers, long timeout) override {
         fd_set r_set = read_set;
         fd_set w_set = write_set;
 
         //
         // select 轮询
         //
-        struct timeval selectTimeOut = {};
-        selectTimeOut.tv_sec = timeout;
-        int rt = select(0, &r_set, &w_set, NULL, &selectTimeOut);
+        int rt;
+        if (timeout == 0) {
+            rt = select(0, &r_set, &w_set, NULL, NULL);
+        } else {
+            struct timeval selectTimeOut = {timeout, 0};
+            rt = select(0, &r_set, &w_set, NULL, &selectTimeOut);
+        }
         if (rt < 0) {
             err(" select failed, Err:%s\n", getErrorInfo().c_str());
+            safeExit(-1);
         } else if (rt == 0) {
             //
             // select 超时返回，关闭所有连接 socket
             //
-            info(" select time out\n");
+            info(" select time out, no events\n");
             for (int i = 0; i < read_set.fd_count; i++) {
                 if (read_set.fd_array[i] != acceptSocket) {
-                    info(" [socket %s] wait time out\n", getSocketIPPort(read_set.fd_array[i]).c_str());
-                    HttpResponse::closeSocket(read_set.fd_array[i]);
-
+                    info(" [socket %s] socket %d wait time out\n", getSocketIPPort(read_set.fd_array[i]).c_str(), read_set.fd_array[i]);
+                    handleReadTimeout(read_set.fd_array[i], handlers[read_set.fd_array[i]], (Acceptor*)handlers[acceptSocket]);
                 }
             }
         } else {
@@ -84,7 +89,8 @@ public:
 
             for (int i = 0; i < write_set.fd_count; i++) {
                 if (FD_ISSET(write_set.fd_array[i], &w_set)) {
-                    handlers[write_set.fd_array[i]]->handleEvent();
+                    auto *pAcceptor = (Acceptor *)handlers[acceptSocket];
+                    handlers[write_set.fd_array[i]]->handleEvent(bind(&Acceptor::onConnectionClosed, pAcceptor));
                 }
             }
         }
@@ -106,6 +112,13 @@ public:
         }
 
         return rt;
+    }
+
+    void handleReadTimeout(Handle handle, BaseHandler *pHandler, Acceptor *pAcceptor) {
+        closeSocket(handle);
+        auto *pReactor = Reactor::getInstance();
+        pReactor->removeHandler(pHandler, EventType::OP_READ);
+        pAcceptor->onConnectionClosed();
     }
 };
 

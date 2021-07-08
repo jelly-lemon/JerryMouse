@@ -1,14 +1,33 @@
 #pragma once
+
+#include <http/HttpResponse.h>
+
+#include <utility>
 #include "BaseHandler.h"
 
 class WriteHandler: public BaseHandler {
+private:
+    HttpRequest httpRequest;
+
 public:
-    WriteHandler(Handle sock_fd) {
-        this->sock_fd = sock_fd;
+    explicit WriteHandler(Handle handle, HttpRequest httpRequest) :
+    BaseHandler(handle), httpRequest(std::move(httpRequest)) {
+
     }
 
-    void handleEvent() override {
-        Reactor reactor = Reactor::getInstance();
-        reactor.removeHandler(this, EventType::OP_WRITE);
+    void handleEvent(function<void()> finishedCallback) override {
+        info(" WriteHandler::handleEvent socket %d\n", sock_fd);
+
+        HttpResponse httpResponse(httpRequest);
+        httpResponse.handleRequest();
+
+        if (finishedCallback != NULL) {
+            finishedCallback();
+        }
+
+        Reactor *pReactor = Reactor::getInstance();
+        pReactor->removeHandler(this, EventType::OP_WRITE);
+
+        this->~WriteHandler();
     }
 };

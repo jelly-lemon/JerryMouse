@@ -9,8 +9,8 @@
 #include <string>
 #include <fcntl.h>
 #include "../include/ThreadPool.cpp"
-#include "../include/util.cpp"
-#include "../include/http/HttpServer.cpp"
+#include "../include/util.h"
+#include "../include/http/HttpServer.h"
 
 
 #define MAX_EVENTS 10

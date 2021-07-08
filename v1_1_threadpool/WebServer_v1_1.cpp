@@ -1,8 +1,8 @@
 #pragma once
 
 #include <string>
-#include "../include/Logger.cpp"
-#include "../include/http/HttpServer.cpp"
+#include "../include/Logger.h"
+#include "../include/http/HttpServer.h"
 #include "../include/ThreadPool.cpp"
 
 

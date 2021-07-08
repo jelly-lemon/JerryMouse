@@ -12,7 +12,7 @@ typedef int SOCKET;
 #include <sstream>
 #include <cstring>
 #include "OS_util.cpp"
-#include "Logger.cpp"
+#include "Logger.h"
 
 
 
@@ -192,7 +192,7 @@ int getCPULogicCoresNumber() {
 /**
  * 获取客户端 IP 和端口号
  */
-string getSocketIPPort(SOCKET &connSocket) {
+string getSocketIPPort(SOCKET connSocket) {
     string clientIPport;
     sockaddr_in peerAddr = {};
 

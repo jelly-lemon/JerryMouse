@@ -3,10 +3,10 @@
 
 #include <string>
 #include "../CrossPlatform.h"
-#include "../Logger.cpp"
-#include "../util.cpp"
-#include "HttpResponse.cpp"
+#include "../Logger.h"
+#include "../util.h"
 #include "../SocketHelper.h"
+#include "FileHelper.h"
 
 #ifdef WIN32
 #include <winsock2.h>
@@ -27,22 +27,21 @@ private:
     string ip;
     int backlog;
 
+
+
 protected:
-    void showAcceptSocketIPPort();
-
-
-
-
 
 
 public:
-    HttpServer(): connectionNumber(0), acceptSocket(0) {
+    explicit HttpServer(int port = 80, string ip = "", int backlog = 65535):
+    connectionNumber(0), acceptSocket(0), port(port), ip(ip), backlog(backlog) {
 #ifdef WIN32
         initWSA();
 #endif
     }
 
-    void startServer(int port = 80, string ip = "", int backlog = 65535);
+    static const string rootDir;  // 资源所在根目录
+
 
     void showUsage();
 
@@ -50,9 +49,24 @@ public:
 
     void subConnectionNumber();
 
-    unsigned int getConnectionNumber();
-
     SOCKET getAcceptSocket() const;
+
+    void startServer() {
+        info(" --------- starting Server ---------\n")
+        try {
+            info(" web_root dir is %s\n", getAbsPath(HttpServer::rootDir).c_str())
+            acceptSocket = createListenSocket(port, ip, backlog);
+        } catch (exception &e) {
+            err(" --------- startServer failed, Err: %s ---------\n", e.what());
+            safeExit(-1);
+        }
+        info(" --------- Server started ---------\n");
+    }
+
+    unsigned int getConnectionNumber() {
+        lock_guard<mutex> lockGuard(numLock);
+        return connectionNumber;
+    }
 
 };
 
@@ -79,26 +93,11 @@ void HttpServer::subConnectionNumber() {
 }
 
 
-
-unsigned int HttpServer::getConnectionNumber() {
-    lock_guard<mutex> lockGuard(numLock);
-    return connectionNumber;
-}
-
 void HttpServer::showUsage() {
 
 }
 
-void HttpServer::startServer(int port, string ip, int backlog) {
-    info(" --------- starting Server ---------\n")
-    try {
-        acceptSocket = createListenSocket(port, ip, backlog);
-    } catch (exception &e) {
-        err(" --------- startServer failed, Err: %s ---------\n", e.what());
-        safeExit(-1);
-    }
-    info(" --------- Server started ---------\n");
-}
+
 
 
 

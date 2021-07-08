@@ -1,4 +1,10 @@
 #pragma once
+#include <string>
+#include "Logger.h"
+#include "util.h"
+#include "winsock2.h"
+
+using namespace std;
 
 /**
  * 获取 acceptSocket 监听的 IP 和端口
@@ -31,7 +37,7 @@ string getAcceptIPPort(SOCKET &acceptSocket) {
  * @param ip
  * @return
  */
-SOCKET createListenSocket(int port = 80, string ip = "", int backlog = 65535) {
+SOCKET createListenSocket(int port = 80, string ip = "", int backlog = 65535, bool isNonBlocking = true) {
     //
     // 创建监听 socket
     //
@@ -42,10 +48,13 @@ SOCKET createListenSocket(int port = 80, string ip = "", int backlog = 65535) {
     // ---------------------------------------------------
 #ifdef WIN32
     SOCKADDR_IN addrSrv;
-    if (ip.empty() || ip == "0.0.0.0")
+    if (ip.empty() || ip == "0.0.0.0") {
+        ip = "0.0.0.0";
         addrSrv.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
+    }
     else if (ip == "localhost" || ip == "127.0.0.1") {
-        addrSrv.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+        ip = "127.0.0.1";
+        addrSrv.sin_addr.S_un.S_addr = inet_addr(ip.c_str());
     } else {
         // TODO 检查 IP 合法性
         addrSrv.sin_addr.S_un.S_addr = inet_addr(ip.c_str());
@@ -89,7 +98,12 @@ SOCKET createListenSocket(int port = 80, string ip = "", int backlog = 65535) {
 #endif
     info(" acceptSocket: %d\n", acceptSocket);
     info(" server listen at %s\n", getAcceptIPPort(acceptSocket).c_str());
-
+    if (isNonBlocking) {
+        info(" acceptSocket is NonBlocking mode\n");
+        setNonBlocking(acceptSocket);
+    } else {
+        info(" acceptSocket is Blocking mode\n");
+    }
 
     //
     // 开始监听请求
@@ -107,10 +121,31 @@ SOCKET createListenSocket(int port = 80, string ip = "", int backlog = 65535) {
     } else {
         info(" now, you can visit http://%s:%d to browse homepage.\n", ip.c_str(), port);
     }
-    info(" web_root dir is %s\n", HttpResponse::rootDir.c_str())
     info(" waiting for connection...\n");
 
     return acceptSocket;
 }
 
+
+/**
+ * 关闭 socket
+ *
+ * @param clientSocket
+ * @return
+ */
+int closeSocket(SOCKET clientSocket) {
+    string strIpPort = getSocketIPPort(clientSocket);
+#ifdef WIN32
+    int n = closesocket(clientSocket);
+    if (n == SOCKET_ERROR) {
+        err("[socket %s] close socket %d err, Err: %s\n", strIpPort.c_str(), clientSocket, getErrorInfo().c_str());
+    } else {
+        info("[socket %s] we closed socket %d.\n", strIpPort.c_str(), clientSocket);
+    }
+#else
+    int n = close(clientSocket);
+#endif
+
+    return n;
+}
 

@@ -2,9 +2,9 @@
 
 #include <thread>
 #include <functional>
-#include "http/HttpResponse.cpp"
+#include "http/HttpResponse.h"
 #include "SyncQueue.cpp"
-#include "Logger.cpp"
+#include "Logger.h"
 
 using namespace std;
 

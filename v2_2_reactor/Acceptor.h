@@ -2,7 +2,7 @@
 
 #include <mutex>
 #include "BaseHandler.h"
-#include "http/HttpServer.cpp"
+#include "http/HttpServer.h"
 #include "Reactor.h"
 #include "ReadHandler.h"
 
@@ -16,8 +16,10 @@ private:
 
 public:
     explicit Acceptor(int port = 80, string ip = "") :
-            spareNumber(FD_SETSIZE - 1), httpServer() {
-        httpServer.startServer(port, ip);
+            BaseHandler(0),
+            spareNumber(FD_SETSIZE - 1),
+            httpServer(port, ip) {
+        httpServer.startServer();
         this->sock_fd = httpServer.getAcceptSocket();
     }
 
@@ -27,26 +29,32 @@ public:
      *
      * @param event
      */
-    void handleEvent() {
+    void handleEvent(function<void()> finishedCallback = NULL) override {
         //
         // 接收新连接
         //
         info(" spareNumber: %d\n", spareNumber);
-        for (int i; i < spareNumber; i++) {
+        for (int i = 0; i < spareNumber; i++) {
             sockaddr connAddr = {};
             int addrLen = sizeof(connAddr);
             SOCKET newConnSocket = accept(this->sock_fd, &connAddr, &addrLen);
             if (newConnSocket != SOCKET_ERROR) {
-                info(" [ socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
+                info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
                 httpServer.addConnectionNumber();
-                spareNumber--;
+                subSpareNumber();
 
                 //
                 // 注册监听事件
                 //
-                Reactor reactor = Reactor::getInstance();
-                reactor.registerHandler(new ReadHandler(newConnSocket), EventType::OP_READ);
+                Reactor *pReactor = Reactor::getInstance();
+                pReactor->registerHandler(new ReadHandler(newConnSocket), EventType::OP_READ);
             } else {
+#ifdef WIN32
+                if (getErrorCode() == WSAEWOULDBLOCK) {
+                    info(" no more new connection\n");
+                    break;
+                }
+#endif
                 err(" accept failed, Err: %s\n", getErrorInfo().c_str());
             }
         }
@@ -54,6 +62,16 @@ public:
 
     void addSpareNumber() {
         spareNumber++;
+        info(" addSpareNumber: %d\n", spareNumber);
     }
 
+    void subSpareNumber() {
+        spareNumber--;
+        info(" subSpareNumber: %d\n", spareNumber);
+    }
+
+    void onConnectionClosed() {
+        httpServer.subConnectionNumber();
+        addSpareNumber();
+    }
 };

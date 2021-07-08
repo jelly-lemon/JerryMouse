@@ -5,6 +5,8 @@
 #include <map>
 #include <string>
 #include <stdexcept>
+#include <winsock2.h>
+#include "util.h"
 
 using namespace std;
 
@@ -13,10 +15,11 @@ using namespace std;
  */
 class HttpRequest {
 private:
+    SOCKET clientSocket;                // 客户端 socket
     map<string, string> requestLine;    // 请求行
     map<string, string> requestHeader;  // 请求头
-    string requestBody; // 请求体
-    string rawData; // 客户端请求原始字符串，也就是服务端收到的原始字符串
+    string requestBody;                 // 请求体
+    string requestRawData;                     // 客户端请求原始字符串，也就是服务端收到的原始字符串
 
     void parseRawData();
 
@@ -28,14 +31,75 @@ public:
     // 如果一个构造器是接收单个参数的，要加上 explicit
     // 如果不加的话，该构造函数还会拥有类型转换的情形，造成混淆
     /**
-     * 构造函数
+     *
      *
      * @param rawData 原始字符串
      */
-    explicit HttpRequest(string &rawData) : rawData(rawData) {
+    explicit HttpRequest(string &rawData, SOCKET clientSocket) :
+    requestRawData(rawData), clientSocket(clientSocket) {
         // 如果形参是引用的话，不存在参数为 NULL 的情况，即使强制传 NULL，编译器也不通过，因为类型不匹配
         parseRawData();
     }
+
+    explicit HttpRequest(SOCKET clientSocket): clientSocket(clientSocket){
+        requestRawData = recvData();
+        parseRawData();
+    }
+
+
+    string getRequestRawData() {
+        return requestRawData;
+    }
+
+
+
+
+
+    /**
+     * 获取客户端发送过来的原始字符串
+     *
+     * @param socket 连接 socket
+     * @param recvTimeout 读取超时返回时间，单位是毫秒
+     * @return 客户端发过来的原始字符串
+     */
+    string recvData(int recvTimeout = 0) {
+        const int len = 1024;
+        char buf[len];
+        int code;
+        string data;
+
+        // 设置超时返回
+        // 【易错点】如果超时返回设置 0 的话，就表示一直等待直到有数据
+        if (recvTimeout >= 0) {
+            setsockopt(clientSocket, SOL_SOCKET, SO_RCVTIMEO, (char *) &recvTimeout, sizeof(int));
+        }
+
+        // 读取数据
+        while (1) {
+            // 尝试接收 1024 个字节
+            memset(buf, '\0', len);
+            code = recv(clientSocket, buf, len, 0);
+            data += buf;
+
+            // 判断读取情况
+            char msg[101] = {'\0'};
+            // 判断是否收到全部数据
+            if (isAllData(data)) {
+                break;
+            } else if (code == 0) {
+                // 客户端主动关闭了
+                snprintf(msg, 100, "socket %d closed connection", clientSocket);
+                throw runtime_error(msg);
+            } else if (code == SOCKET_ERROR) {
+                string errInfo = getErrorInfo();
+                throw runtime_error(errInfo);
+            }
+        }
+
+        info("[socket %s] request\n%s\n", getSocketIPPort(clientSocket).c_str(), data.c_str());
+        return data;
+    }
+
 
     string getURL();
 
@@ -46,6 +110,10 @@ public:
     string getHeader(string key);
 
     string getBody();
+
+    SOCKET getClientSocket() const {
+        return clientSocket;
+    }
 
     static bool isAllData(const string &data);
 };
@@ -124,7 +192,7 @@ void HttpRequest::parseRawData() {
     // 判断内容是否合法
     //
     int headerEndPos, pStart, pEnd;
-    headerEndPos = rawData.find("\r\n\r\n");   // 找到请求头结束位置
+    headerEndPos = requestRawData.find("\r\n\r\n");   // 找到请求头结束位置
     if (headerEndPos == -1)
         throw invalid_argument("request raw data is not legal\n");
 
@@ -132,17 +200,17 @@ void HttpRequest::parseRawData() {
     // 提取请求行
     //
     pStart = 0;
-    pEnd = rawData.find("\r\n");
-    string reqLine(rawData, 0, pEnd - pStart);
+    pEnd = requestRawData.find("\r\n");
+    string reqLine(requestRawData, 0, pEnd - pStart);
     requestLine = HttpRequest::reqLineToMap(reqLine);    // 请求行转键值对
 
     //
     // 提取请求头
     //
     pStart = pEnd + 2;  // \r\n 两个字节
-    pEnd = rawData.find("\r\n\r\n", pStart);
+    pEnd = requestRawData.find("\r\n\r\n", pStart);
     if (pEnd != -1) {
-        string reqHeader(rawData, pStart, pEnd - pStart);
+        string reqHeader(requestRawData, pStart, pEnd - pStart);
         requestHeader = HttpRequest::reqHeaderToMap(reqHeader);
     }
 
@@ -150,12 +218,12 @@ void HttpRequest::parseRawData() {
     // 提取请求体
     //
     int lineAndHeaderLength = headerEndPos + 4; // \r\n\r\n 占 4 个字节，不要用 sizeof("\r\n\r\n")，用 sizeof 会得到 5
-    int rawDataLength = rawData.length();
+    int rawDataLength = requestRawData.length();
     if (rawDataLength == lineAndHeaderLength) {
         // 如果数据长度刚好等于在请求头结束位置，那说明没 body
         requestBody = "";
     } else {
-        requestBody = rawData.substr(lineAndHeaderLength);
+        requestBody = requestRawData.substr(lineAndHeaderLength);
     }
 }
 
@@ -231,4 +299,6 @@ string HttpRequest::getHeader(string key) {
 string HttpRequest::getBody() {
     return requestBody;
 }
+
+
 

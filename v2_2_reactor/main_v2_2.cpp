@@ -3,11 +3,14 @@
 #include "SelectDemultiplexer.h"
 using namespace std;
 
+
+const string HttpServer::rootDir = "../web_root";
+
 int main() {
-    Reactor reactor = Reactor::getInstance();
-    reactor.setEventDemultiplexer(new SelectDemultiplexer());
-    reactor.registerHandler(new Acceptor(80, "localhost"), EventType::OP_ACCEPT);
-    reactor.handleEvents(1);
+    Reactor *pReactor = Reactor::getInstance();
+    pReactor->setEventDemultiplexer(new SelectDemultiplexer());
+    pReactor->registerHandler(new Acceptor(80, "localhost"), EventType::OP_ACCEPT);
+    pReactor->handleEvents(1);
 
     return 0;
 }

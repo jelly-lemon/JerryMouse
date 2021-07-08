@@ -12,6 +12,9 @@ elseif(UNIX)
     message(STATUS "Now is Linux")
 endif()
 
+include_directories(${PROJECT_SOURCE_DIR}/include)
+
+
 
 add_executable(main_v1 v1_per_connection_per_thread/main_v1.cpp)
 if(WIN32)
@@ -35,9 +38,7 @@ if(WIN32)
 endif()
 
 
-add_executable(main_v2_2 v2_2_reactor/main_v2_2.cpp
-        )
-target_include_directories(main_v2_2 PRIVATE include)
+add_executable(main_v2_2 v2_2_reactor/main_v2_2.cpp)
 
 if(WIN32)
     target_link_libraries(main_v2_2 ws2_32.lib)
