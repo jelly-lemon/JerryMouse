@@ -15,12 +15,12 @@ const string HttpServer::rootDir = "../web_root";   // 资源根目录
 
 
 int main(int argc, char *argv[]) {
-//
+    //
     // 默认参数
     //
-    bool asyncLog = true;
-    bool printInfo = true;
-    bool writeToFile = true;
+    bool isAsyncLog = true;
+    bool isPrintInfo = true;
+    bool isWriteToFile = true;
     bool isCleanOldLogFile = true;
     int port = 80;
     string ip = "10.66.38.27";
@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
     //
     // 启动服务端
     //
-    Logger logger(asyncLog, printInfo, writeToFile, isCleanOldLogFile);  // 创建日志对象
+    Logger logger(isAsyncLog, isPrintInfo, isWriteToFile, isCleanOldLogFile);  // 创建日志对象
     HttpServer_v4_1 server(poolSize);
     server.startServer(port, ip, backlog);
 

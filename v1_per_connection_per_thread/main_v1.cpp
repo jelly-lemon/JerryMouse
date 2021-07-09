@@ -1,22 +1,16 @@
 
-#include "WebServer_v1.cpp"
+#include "HttpServer_v1.h"
 
 using namespace std;
 
+const string HttpServer::rootDir = "../web_root";
+
 
 int main() {
-    //
-    // 默认参数
-    //
-    bool asyncLog = true;
-    bool printInfo = true;
-    bool writeToFile = true;
-    bool isCleanOldLogFile = true;
+    Logger logger(true, true, true, true);  // 创建日志对象
+
     int port = 80;
     string ip = "10.66.38.27";
-    int backlog = 65535;
-    int poolSize = 0;
-    string webRoot = "../web_root";
 
 
     //
@@ -30,13 +24,12 @@ int main() {
     //
     system("chcp 65001");
 
+
     //
     // 启动服务端
     //
-    HttpResponse::rootDir = webRoot;   // 资源根目录
-    Logger logger(asyncLog, printInfo, writeToFile, isCleanOldLogFile);  // 创建日志对象
-    WebServer_v1 server;
-    server.startServer(port, ip, backlog);
+    HttpServer_v1 server(port, ip);
+    server.startServer();
 
     return 0;
 }

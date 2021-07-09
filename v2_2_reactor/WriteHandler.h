@@ -28,6 +28,7 @@ public:
         Reactor *pReactor = Reactor::getInstance();
         pReactor->removeHandler(this, EventType::OP_WRITE);
 
+        closeSocket(sock_fd);
         this->~WriteHandler();
     }
 };

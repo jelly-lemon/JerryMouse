@@ -1,10 +1,10 @@
-#include "Reactor.h"
-#include "Acceptor.h"
-#include "SelectDemultiplexer.h"
+
+#include "HttpServer_v0.h"
+
 using namespace std;
 
-
 const string HttpServer::rootDir = "../web_root";
+
 
 int main() {
     Logger logger(true, false, true, true);  // 创建日志对象
@@ -24,13 +24,13 @@ int main() {
     //
     system("chcp 65001");
 
+
     //
     // 启动服务端
     //
-    Reactor *pReactor = Reactor::getInstance();
-    pReactor->setEventDemultiplexer(new SelectDemultiplexer());
-    pReactor->registerHandler(new Acceptor(port, ip), EventType::OP_ACCEPT);
-    pReactor->handleEvents(1);
+    HttpServer_v0 server(port, ip);
+    server.startServer();
 
     return 0;
 }
+

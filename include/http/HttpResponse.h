@@ -45,6 +45,10 @@ protected:
     string getStrHeader();
 
 public:
+    HttpResponse(SOCKET clientSocket): httpRequest(clientSocket), clientSocket(clientSocket) {
+
+    }
+
     explicit HttpResponse(HttpRequest httpRequest): httpRequest(std::move(httpRequest)) {
         clientSocket = this->httpRequest.getClientSocket();
     }

@@ -1,6 +1,7 @@
 #pragma once
 #include <winsock2.h>
 #include <string>
+#include "unordered_map"
 #include "http/HttpServer.h"
 #include "http/IOCPHttpResponse.h"
 
@@ -16,9 +17,12 @@ class HttpServer_v4_1: public HttpServer {
 public:
 
     static HANDLE g_hIOCP;
+
+    static unordered_map<SOCKET, long> acceptedTime;
+
     void startServer() {
         HttpServer::startServer();
-        setNonBlocking(HttpServer::getAcceptSocket());
+//        setNonBlocking(acceptSocket);
 
         //
         // 创建完成端口和工作线程
@@ -51,7 +55,7 @@ public:
             // 将连接 socket 与完成端口绑定
             //
             if (CreateIoCompletionPort((HANDLE) client, g_hIOCP, 0, 0) == NULL) {
-                err("[socket %s] CreateIoCompletionPort failed, %s\n", getSocketIPPort(client).c_str(), getErrorInfo().c_str())
+                err("[socket %s] CreateIoCompletionPort failed, Err: %s\n", getSocketIPPort(client).c_str(), getErrorInfo().c_str())
                 subConnectionNumber();
                 closeSocket(client);
             } else {
@@ -61,12 +65,11 @@ public:
                 IO_DATA *pIoData = new IO_DATA;
                 memset(&pIoData->Overlapped, 0, sizeof(pIoData->Overlapped));
                 pIoData->opCode = RECV_FINISHED;
-                int bufLen = 8*1024*100;
+                int bufLen = 8*1024;    // 要是数据量比这个空间大怎么办？
                 pIoData->wsabuf.buf = new char[bufLen];
                 memset(pIoData->wsabuf.buf, '\0', bufLen);
                 pIoData->wsabuf.len = bufLen;
                 pIoData->client = client;
-                pIoData->acceptCompletedTime = GetTickCount();
                 DWORD dwFlags = 0;
 
                 //
@@ -83,7 +86,7 @@ public:
                                    &pIoData->Overlapped, NULL);
                 if (nRet == SOCKET_ERROR && (ERROR_IO_PENDING != WSAGetLastError())) {
                     err("WASRecv Failed, %s\n", getErrorInfo().c_str())
-                    HttpResponse::closeSocket(client);
+                    closeSocket(client);
                     delete pIoData;
                 }
             }
@@ -125,9 +128,9 @@ public:
             // ---------------------------------------------
             pIoData = (IO_DATA *) lpOverlapped;
             if (dwIoSize == 0) {
-                info("[socket %s] client disconnected.\n", getSocketIPPort(pIoData->client).c_str());
-                HttpResponse::closeSocket(pIoData->client);
-                Logger::subConnectionNumber();
+                info("[socket %s] socket %d disconnected.\n", getSocketIPPort(pIoData->client).c_str(), pIoData->client);
+                closeSocket(pIoData->client);
+                subConnectionNumber();
                 delete pIoData;
                 continue;
             }
@@ -158,7 +161,7 @@ public:
                     response.handleRequest(rawData);
                 } catch (exception &e) {
                     err("handleRequest failed, %s, %s\n", e.what(), getErrorInfo().c_str());
-                    HttpResponse::closeSocket(pIoData->client);
+                    closeSocket(pIoData->client);
                     delete pIoData;
                     continue;
                 }
@@ -173,10 +176,14 @@ public:
                 //
                 // 关闭连接，服务端响应一个请求后就立即关闭 socket
                 //
-                HttpResponse::closeSocket(pIoData->client);
+                closeSocket(pIoData->client);
                 delete pIoData;
                 continue;
             }
         }
     }
 };
+
+
+HANDLE HttpServer_v4_1::g_hIOCP;
+unordered_map<SOCKET, long> HttpServer_v4_1::acceptedTime;

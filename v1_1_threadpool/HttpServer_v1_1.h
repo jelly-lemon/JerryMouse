@@ -12,20 +12,19 @@ using namespace std;
 /**
  * 对服务端封装成类
  */
-class WebServer_v1_1 : public HttpServer{
+class HttpServer_v1_1 : public HttpServer{
 private:
     ThreadPool<pair<SOCKET, long>> threadPool;
 
 public:
-    explicit WebServer_v1_1(int poolSize = 0): threadPool(poolSize)   {
+    explicit HttpServer_v1_1(): threadPool(0)   {
 #ifdef WIN32
         initWSA();
 #endif
     }
 
 
-    void startServer(int port = 80, string ip = "", int backlog = 65535) override;
-
+    void startServer();
 };
 
 
@@ -38,7 +37,7 @@ public:
  * @param port 监听端口
  * @param maxSocketNumber 最大监听 socket 数量
 */
-void WebServer_v1_1::startServer(int port, string ip, int backlog) {
+void HttpServer_v1_1::startServer(int port, string ip, int backlog) {
     info(" starting Server...\n")
 
     //

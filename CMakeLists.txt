@@ -14,6 +14,10 @@ endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
+add_executable(main_v0 v0_one_thread/main_v0.cpp)
+if(WIN32)
+    target_link_libraries(main_v0 ws2_32.lib)
+endif()
 
 
 add_executable(main_v1 v1_per_connection_per_thread/main_v1.cpp)

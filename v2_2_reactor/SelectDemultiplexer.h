@@ -83,6 +83,13 @@ public:
             info(" select succeed\n");
             for (int i = 0; i < read_set.fd_count; i++) {
                 if (FD_ISSET(read_set.fd_array[i], &r_set)) {
+                    if (read_set.fd_array[i] == acceptSocket) {
+                        auto pAcceptor = (Acceptor*)handlers[read_set.fd_array[i]];
+                        if (!pAcceptor->isSpare()) {
+                            info(" no free space for select\n");
+                            continue;
+                        }
+                    }
                     handlers[read_set.fd_array[i]]->handleEvent();
                 }
             }

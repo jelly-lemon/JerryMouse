@@ -7,20 +7,21 @@
 
 using namespace std;
 
-class WebServer_v1 : public WebServer {
+class HttpServer_v1 : public HttpServer {
 private:
     mutex mutexWorkerNumber;
     int currentWorkerNumber;
 
 public:
-    WebServer_v1() : currentWorkerNumber(0) {
-#ifdef WIN32
-        initWSA();
-#endif
-    }
-    void startServer(int port, string ip, int backlog) override;
+    HttpServer_v1(int port = 80, string ip = "127.0.0.1", int backlog = 65535) :
+    currentWorkerNumber(0), HttpServer(port, ip, backlog) {
 
-    static void* worker_main(SOCKET connSocket, long acceptedTime, WebServer_v1 *pWebServer);
+    }
+
+
+    void startServer();
+
+    static void* worker_main(SOCKET connSocket, long acceptedTime, HttpServer_v1 *pHttpServer);
 
     void addWorkerNumber();
 
@@ -28,13 +29,8 @@ public:
 };
 
 
-void WebServer_v1::startServer(int port, string ip, int backlog) {
-    info(" starting Server...\n")
-
-    //
-    // 创建监听 socket
-    //
-    SOCKET acceptSocket = createListenSocket(port, backlog, ip);
+void HttpServer_v1::startServer() {
+    HttpServer::startServer();
 
     while (true) {
         sockaddr connAddr = {};
@@ -45,18 +41,19 @@ void WebServer_v1::startServer(int port, string ip, int backlog) {
         SOCKET newConnSocket = accept(acceptSocket, &connAddr, &addrLen);
         info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
         long acceptedTime = getTickCount();
-        thread t(worker_main, newConnSocket, acceptedTime, this);
-        t.detach();
+//        thread t(worker_main, newConnSocket, acceptedTime, this);
+//        t.detach();
     }
 }
 
 /**
  * 子线程函数
  */
-void* WebServer_v1::worker_main(SOCKET connSocket, long acceptedTime, WebServer_v1 *pWebServer) {
+void* HttpServer_v1::worker_main(SOCKET connSocket, long acceptedTime, HttpServer_v1 *pHttpServer) {
+    info(" [socket %s] socket %d wait time: %d ms\n", getSocketIPPort(connSocket).c_str(), connSocket, getTimeDiff(acceptedTime));
+    pHttpServer->addWorkerNumber();
+
     try {
-        info(" [socket %s] socket %d wait time: %d ms\n", getSocketIPPort(connSocket).c_str(), connSocket, getTimeDiff(acceptedTime));
-        pWebServer->addWorkerNumber();
         HttpResponse response(connSocket);
         response.handleRequest();
     } catch(exception &e) {
@@ -66,18 +63,19 @@ void* WebServer_v1::worker_main(SOCKET connSocket, long acceptedTime, WebServer_
     //
     // 退出线程
     //
+    closeSocket(connSocket);
     info (" worker finished\n");
-    pWebServer->subWorkerNumber();
+    pHttpServer->subWorkerNumber();
     return NULL;
 }
 
-void WebServer_v1::addWorkerNumber() {
+void HttpServer_v1::addWorkerNumber() {
     lock_guard<mutex> lockGuard(mutexWorkerNumber);
     currentWorkerNumber++;
     info(" addWorkerNumber: %d\n", currentWorkerNumber);
 }
 
-void WebServer_v1::subWorkerNumber() {
+void HttpServer_v1::subWorkerNumber() {
     lock_guard<mutex> lockGuard(mutexWorkerNumber);
     currentWorkerNumber--;
     info(" subWorkerNumber: %d\n", currentWorkerNumber);

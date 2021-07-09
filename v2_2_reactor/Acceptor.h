@@ -19,8 +19,10 @@ public:
             BaseHandler(0),
             spareNumber(FD_SETSIZE - 1),
             httpServer(port, ip) {
+
         httpServer.startServer();
         this->sock_fd = httpServer.getAcceptSocket();
+        setNonBlocking(this->sock_fd);
     }
 
 
@@ -73,5 +75,17 @@ public:
     void onConnectionClosed() {
         httpServer.subConnectionNumber();
         addSpareNumber();
+    }
+
+    unsigned int getSpareNumber() {
+        return spareNumber;
+    }
+
+    bool isSpare() {
+        if (spareNumber == 0) {
+            return false;
+        }
+
+        return true;
     }
 };
