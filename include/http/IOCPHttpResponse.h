@@ -58,8 +58,8 @@ public:
  */
 int IOCPHttpResponse::httpSend(const string &responseLine, const string &responseBody, const string &contentType) {
     // 在 Header 中添加 body 类型和长度信息
-    setHeader("Content-Length", to_string(responseBody.length()));
-    setHeader("Content-Type", contentType);
+    addHeader("Content-Length", to_string(responseBody.length()));
+    addHeader("Content-Type", contentType);
 
     // 整理数据
     string sendHeader = getStrHeader();

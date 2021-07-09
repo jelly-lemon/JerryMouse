@@ -53,17 +53,21 @@ void* HttpServer_v1::worker_main(SOCKET connSocket, long acceptedTime, HttpServe
     info(" [socket %s] socket %d wait time: %d ms\n", getSocketIPPort(connSocket).c_str(), connSocket, getTimeDiff(acceptedTime));
     pHttpServer->addWorkerNumber();
 
+
+    //
+    // 处理请求
+    //
     try {
         HttpResponse response(connSocket);
         response.handleRequest();
+        closeSocket(connSocket);
     } catch(exception &e) {
-        info(" worker Err: %s\n", e.what());
+        info(" handleRequest Err: %s\n", e.what());
     }
 
     //
     // 退出线程
     //
-    closeSocket(connSocket);
     info (" worker finished\n");
     pHttpServer->subWorkerNumber();
     return NULL;
