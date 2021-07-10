@@ -3,7 +3,7 @@
 #include <string>
 #include "../include/Logger.h"
 #include "../include/http/HttpServer.h"
-#include "../include/ThreadPool.cpp"
+#include "../include/ThreadPool.h"
 
 
 using namespace std;

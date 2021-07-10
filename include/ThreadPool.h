@@ -32,7 +32,7 @@ public:
         if (poolSize == 0) {
             this->poolSize = getCPULogicCoresNumber() + 1;
         }
-        info(" poolSize: %d\n", this->poolSize);
+        info(" new ThreadPool, poolSize: %d\n", this->poolSize);
     }
 
     bool submitTask(QueueElement task);

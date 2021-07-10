@@ -1,6 +1,9 @@
 #pragma once
-#include <string>
+#ifdef WIN32
 #include "windows.h"
+#else
+#endif
+#include <string>
 using namespace std;
 
 /**
@@ -10,14 +13,17 @@ using namespace std;
  * @return
  */
 string getAbsPath(string relativePath) {
-    string absPath;
-    char tAbsPath[1024] = {'\0'};
+    string absolutePath;
+    char t[1024] = {'\0'};
 #ifdef WIN32
-    if (_fullpath(tAbsPath, relativePath.c_str(), 1024) != NULL) {
-        absPath = string(tAbsPath);
+    if (_fullpath(t, relativePath.c_str(), 1024) != NULL) {
+        absolutePath = string(t);
     }
 #else
+    if (realpath(relativePath.c_str(), t) != NULL) {
+        absolutePath = string(t);
+    }
 
 #endif
-    return absPath;
+    return absolutePath;
 }

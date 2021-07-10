@@ -36,7 +36,7 @@ int main() {
     //
     // 启动服务端
     //
-    HttpResponse::rootDir = webRoot;   // 资源根目录
+    HttpServer::rootDir = webRoot;   // 资源根目录
     Logger logger(asyncLog, printInfo, writeToFile, isCleanOldLogFile);  // 创建日志对象
     HttpServer_v2_2 server(poolSize);
     server.startServer(port, ip, backlog);

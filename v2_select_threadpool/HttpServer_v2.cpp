@@ -4,7 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include "../include/http/HttpServer.h"
-#include "../include/ThreadPool.cpp"
+#include "../include/ThreadPool.h"
 
 using namespace std;
 

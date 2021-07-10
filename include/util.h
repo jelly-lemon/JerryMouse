@@ -1,16 +1,19 @@
 #pragma once
 
-
+#include "CrossPlatform.h"
 #ifdef WIN32
 #include "winsock2.h"
 #include "windows.h"
 #elif linux
 #include <unistd.h>
-typedef int SOCKET;
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #endif
 
 #include <sstream>
 #include <cstring>
+#include <fcntl.h>
+#include <csignal>
 #include "OS_util.cpp"
 #include "Logger.h"
 
@@ -19,25 +22,44 @@ typedef int SOCKET;
 using namespace std;
 
 
+#ifdef linux
 /**
- *  将 socket 设置为非阻塞
+ * 使用 select 模拟毫秒级别的挂起
+ *
+ * @param time 毫秒
  */
-int setNonBlocking(SOCKET sockfd, bool isNonBlocking = true) {
-    unsigned long ul = 1;
-    if (isNonBlocking) {
-        info(" set socket %d NonBlocking mode\n", sockfd);
-    } else {
-        info(" set socket %d Blocking mode\n", sockfd);
+void Sleep(int time) {
+    struct timeval sTime;
+    sTime.tv_sec = time / 1000;
+    sTime.tv_usec = time % 1000;
+    select(0, NULL, NULL, NULL, &sTime);
+}
+#endif
+
+/**
+ * 安全退出
+ *
+ * @param code 退出代码
+ */
+void safeExit(int code, string exitInfo = "") {
+    info("exit: %d %s\n", code, exitInfo.c_str())
+
+    //
+    // 等待日志线程打印所有完所有消息
+    //
+    while (!Logger::msgQueue.isEmpty()) {
+        info("waiting logger write-thread to finish msgQueue\n");
+        Sleep(1000);
     }
 
-
-#ifdef linux
-    int rt = fcntl(sockfd, FIONBIO, &ul);
-#else
-    int rt = ioctlsocket(sockfd, FIONBIO, &ul);
+#ifdef WIN32
+    WSACleanup();
 #endif
-    return rt;
+    _exit(code);
 }
+
+
+
 
 
 /**
@@ -45,7 +67,7 @@ int setNonBlocking(SOCKET sockfd, bool isNonBlocking = true) {
  */
 string getErrorInfo() {
 #ifdef linux
-    string err_info(strerror(errno));
+    string err_info = to_string(errno) + ", " + strerror(errno);
 #else
     int err_code = WSAGetLastError();
     string err_info;
@@ -93,19 +115,7 @@ int getErrorCode() {
     return errorCode;
 }
 
-#ifdef linux
-/**
- * 使用 select 模拟毫秒级别的挂起
- *
- * @param time 毫秒
- */
-void Sleep(int time) {
-    struct timeval sTime;
-    sTime.tv_sec = 0;
-    sTime.tv_usec = time * 1000;
-    select(0, NULL, NULL, NULL, &sTime);
-}
-#endif
+
 
 /**
  * 读取文件
@@ -139,28 +149,7 @@ string getFileType(string url) {
 
 
 
-/**
- * 安全退出
- *
- * @param code 退出代码
- */
-void safeExit(int code, string exitInfo = "") {
-    info("exit: %d %s\n", code, exitInfo.c_str())
 
-    //
-    // 等待日志线程打印所有完所有消息
-    //
-    while (!Logger::msgQueue.isEmpty()) {
-        info("waiting logger write-thread to finish\n");
-        Sleep(1000);
-    }
-
-#ifdef WIN32
-    WSACleanup();
-#endif
-
-    exit(code);
-}
 
 /**
  * 信号处理函数

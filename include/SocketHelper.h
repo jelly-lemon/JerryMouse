@@ -2,7 +2,11 @@
 #include <string>
 #include "Logger.h"
 #include "util.h"
+#ifdef WIN32
 #include "winsock2.h"
+#else
+
+#endif
 
 using namespace std;
 
@@ -28,6 +32,29 @@ string getAcceptIPPort(SOCKET &acceptSocket) {
     return acceptIPPort;
 }
 
+/**
+ *  将 socket 设置为非阻塞
+ */
+int setNonBlocking(SOCKET sockfd, bool isNonBlocking = true) {
+#ifdef WIN32
+    unsigned long ul = 1;
+    int rt = ioctlsocket(sockfd, FIONBIO, &ul);
+#else
+    if (isNonBlocking) {
+        int cflags = fcntl(sockfd, F_GETFL, 0);
+        int rt = fcntl(sockfd, F_SETFL, cflags|O_NONBLOCK);
+        if (rt == -1) {
+            info(" set socket %d to NonBlocking mode failed\n", sockfd);
+        } else {
+            info(" set socket %d to NonBlocking mode succeed\n", sockfd);
+        }
+
+        return rt;
+    }
+#endif
+
+    return -1;
+}
 
 /**
  * 创建监听 socket
@@ -37,7 +64,7 @@ string getAcceptIPPort(SOCKET &acceptSocket) {
  * @param ip
  * @return
  */
-SOCKET createListenSocket(int port = 80, string ip = "", int backlog = 65535) {
+SOCKET createListenSocket(int port = 80, string ip = "", bool isNonBlocking = true, int backlog = 65535) {
     //
     // 创建监听 socket
     //
@@ -91,13 +118,16 @@ SOCKET createListenSocket(int port = 80, string ip = "", int backlog = 65535) {
     // 绑定监听端口
     //
     int n = bind(acceptSocket, (sockaddr *) &addrSrv, sizeof(sockaddr));
-    if (n == SOCKET_ERROR) {
+    if (n == -1) {
         err(" bind port %d failed, Err:%s\n", port, getErrorInfo().c_str())
         safeExit(-1);
     }
 #endif
     info(" acceptSocket: %d\n", acceptSocket);
     info(" server listen at %s\n", getAcceptIPPort(acceptSocket).c_str());
+    if (isNonBlocking) {
+        setNonBlocking(acceptSocket);
+    }
 
     //
     // 开始监听请求

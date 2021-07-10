@@ -158,7 +158,7 @@ bool Logger::isWriteThreadWorking() {
  * 线程函数，从消息队列中取消息，然后写入文件
  */
 void *Logger::t_write() {
-    info(" t_write thread is running\n");
+    info(" logger thread tid: %ld\n", getThreadID());
     while (1) {
         //
         // 取数据，若没有数据，阻塞等待
@@ -334,7 +334,7 @@ string Logger::getPrefix() {
     // 线程 id
     //
     char sTid[21];
-    snprintf(sTid, 20, "[tid %d]", getThreadID());
+    snprintf(sTid, 20, "[tid %ld]", getThreadID());
 
     string s = sTime + sTid;
     return s;

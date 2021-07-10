@@ -1,16 +1,21 @@
 #pragma once
 
+
 #ifdef WIN32
 #include <windows.h>
 #else
+#include <unistd.h>
 #endif
+#include <thread>
 
-int getThreadID() {
-    int id = 0;
+using namespace std;
+
+unsigned long int getThreadID() {
+    unsigned long int tid = 0;
 #ifdef WIN32
-    id = GetCurrentThreadId();
+    tid = GetCurrentThreadId();
 #else
-    id = getpid();
+    tid = pthread_self();
 #endif
-    return id;
+    return tid;
 }

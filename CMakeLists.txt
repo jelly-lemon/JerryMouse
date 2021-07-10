@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.15)
 project(JerryMouse)
 
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_EXE_LINKER_FLAGS "-static")   # 动态库静态链接库到 exe 中
-
+set(CMAKE_EXE_LINKER_FLAGS "-pthread")
+message("CMAKE_EXE_LINKER_FLAGS=${CMAKE_EXE_LINKER_FLAGS}")
 message("CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
 
 if(WIN32)
@@ -46,6 +46,9 @@ add_executable(main_v2_2 v2_2_reactor/main_v2_2.cpp)
 if(WIN32)
     target_link_libraries(main_v2_2 ws2_32.lib)
 endif()
+
+add_executable(main_v3 v3_epoll_threadpool/main_v3.cpp)
+
 
 add_executable(main_v4_1 v4_1_acceptEx_IOCP_threadpool/main_v4_1.cpp)
 if(WIN32)

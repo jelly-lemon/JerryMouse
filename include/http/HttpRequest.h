@@ -2,10 +2,13 @@
 
 #pragma once
 
+#ifdef WIN32
+#include <winsock2.h>
+#else
+#endif
 #include <map>
 #include <string>
 #include <stdexcept>
-#include <winsock2.h>
 #include "util.h"
 
 using namespace std;

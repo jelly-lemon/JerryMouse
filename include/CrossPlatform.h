@@ -1,10 +1,8 @@
-#ifndef MINIWEBSERVER_CROSSPLATFORM_H
-#define MINIWEBSERVER_CROSSPLATFORM_H
+#pragma once
 
-#endif //MINIWEBSERVER_CROSSPLATFORM_H
+#ifdef WIN32
 
-
-#ifdef linux
+#else
 typedef int SOCKET;
 #define SOCKET_ERROR	(-1)
 #endif

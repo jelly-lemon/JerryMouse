@@ -26,14 +26,14 @@ private:
     string ip;
     int backlog;
 
-
+    virtual void handleAccept() = 0;
 
 protected:
     SOCKET acceptSocket;
 
 
 public:
-    explicit HttpServer(int port = 80, string ip = "", int backlog = 65535):
+    explicit HttpServer(int port = 80, string ip = "127.0.0.1", int backlog = 65535):
     connectionNumber(0), acceptSocket(0), port(port), ip(ip), backlog(backlog) {
 #ifdef WIN32
         initWSA();
@@ -42,60 +42,51 @@ public:
 
     static const string rootDir;  // 资源所在根目录
 
-
-    void showUsage();
-
-    void addConnectionNumber();
-
-    void subConnectionNumber();
-
-    SOCKET getAcceptSocket() const;
-
-    virtual void startServer() {
+    void startServer(bool isNonBlocking = true) {
         info(" --------- starting Server ---------\n")
+        info(" main thread tid: %ld\n", getThreadID());
         try {
             info(" web_root dir is %s\n", getAbsPath(HttpServer::rootDir).c_str())
-            acceptSocket = createListenSocket(port, ip, backlog);
+            acceptSocket = createListenSocket(port, ip, isNonBlocking, backlog);
         } catch (exception &e) {
             err(" --------- startServer failed, Err: %s ---------\n", e.what());
             safeExit(-1);
         }
         info(" --------- Server started ---------\n");
+        handleAccept();
     }
+
 
     unsigned int getConnectionNumber() {
         lock_guard<mutex> lockGuard(numLock);
         return connectionNumber;
     }
 
+
+    SOCKET getAcceptSocket() const {
+        return acceptSocket;
+    }
+
+    /**
+     * 现有连接数量加 1
+     */
+    void addConnectionNumber() {
+        lock_guard<mutex> guarder(numLock);
+        connectionNumber++;
+        info(" addConnectionNumber: %d\n", connectionNumber);
+    }
+
+    /**
+     * 现有连接数量减 1
+     */
+    void subConnectionNumber() {
+        lock_guard<mutex> guarder(numLock);
+        connectionNumber--;
+        info(" subConnectionNumber: %d\n", connectionNumber);
+    }
 };
 
-SOCKET HttpServer::getAcceptSocket() const {
-    return acceptSocket;
-}
 
-/**
- * 现有连接数量加 1
- */
-void HttpServer::addConnectionNumber() {
-    lock_guard<mutex> guarder(numLock);
-    connectionNumber++;
-    info(" addConnectionNumber: %d\n", connectionNumber);
-}
-
-/**
- * 现有连接数量减 1
- */
-void HttpServer::subConnectionNumber() {
-    lock_guard<mutex> guarder(numLock);
-    connectionNumber--;
-    info(" subConnectionNumber: %d\n", connectionNumber);
-}
-
-
-void HttpServer::showUsage() {
-
-}
 
 
 
