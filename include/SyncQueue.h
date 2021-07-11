@@ -41,7 +41,6 @@ public:
             while(m_queue.empty()) {
                 m_notEmpty.wait(locker);    // 解锁 mutexWorkerNumber，并等待被唤醒
             }
-
         } else {
             if (m_queue.empty()) {
                 throw runtime_error("Queue is empty");
@@ -59,10 +58,12 @@ public:
      * 队列是否为空
      */
     bool isEmpty() {
+        unique_lock<mutex> locker(m_mutex);
         return m_queue.empty();
     }
 
     int getSize() {
+        unique_lock<mutex> locker(m_mutex);
         return m_queue.size();
     }
 };

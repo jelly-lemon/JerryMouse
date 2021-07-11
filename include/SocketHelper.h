@@ -64,7 +64,7 @@ int setNonBlocking(SOCKET sockfd, bool isNonBlocking = true) {
  * @param ip
  * @return
  */
-SOCKET createListenSocket(int port = 80, string ip = "", bool isNonBlocking = true, int backlog = 65535) {
+SOCKET createListenSocket(int port = 80, string ip = "", int backlog = 65535) {
     //
     // 创建监听 socket
     //
@@ -125,9 +125,7 @@ SOCKET createListenSocket(int port = 80, string ip = "", bool isNonBlocking = tr
 #endif
     info(" acceptSocket: %d\n", acceptSocket);
     info(" server listen at %s\n", getAcceptIPPort(acceptSocket).c_str());
-    if (isNonBlocking) {
-        setNonBlocking(acceptSocket);
-    }
+
 
     //
     // 开始监听请求
@@ -145,7 +143,6 @@ SOCKET createListenSocket(int port = 80, string ip = "", bool isNonBlocking = tr
     } else {
         info(" now, you can visit http://%s:%d to browse homepage.\n", ip.c_str(), port);
     }
-    info(" waiting for connection...\n");
 
     return acceptSocket;
 }

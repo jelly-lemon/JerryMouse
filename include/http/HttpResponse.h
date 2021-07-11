@@ -76,7 +76,7 @@ private:
         //
         string sendHeader = getStrHeader();
         string sendData = responseLine + sendHeader + responseBody;
-        info("[socket %s] reply\n%s\n", getSocketIPPort(clientSocket).c_str(), sendData.c_str());
+        info("[socket %s] reply socket %d\n%s\n", getSocketIPPort(clientSocket).c_str(), clientSocket, sendData.c_str());
 
         //
         // 发送数据到客户端
@@ -123,11 +123,14 @@ private:
                 string data = getFile(HttpServer::rootDir + url);
                 string fileType = getFileType(url);
                 // 如果是图片
-                if (fileType == "png" || fileType == "gif" || fileType == "jpeg" || fileType == "svg") {
-                    if (fileType == "svg")
+                if (fileType == "png" || fileType == "gif" || fileType == "jpeg" || fileType == "svg" || fileType == "ico") {
+                    if (fileType == "svg"){
                         responseContentType = "image/svg+xml";
-                    else
+                    } else if (fileType == "ico") {
+                        responseContentType = "image/x-ico";
+                    } else {
                         responseContentType = "image/" + fileType;
+                    }
                 } else if (fileType == "html" || fileType == "plain" || fileType == "xml" || fileType == "css") {
                     // 如果是 html 文件
                     responseContentType = "text/" + fileType;

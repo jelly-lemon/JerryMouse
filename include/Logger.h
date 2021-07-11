@@ -21,7 +21,7 @@
 #include <fstream>
 #include <thread>
 #include <stdarg.h>
-#include "SyncQueue.cpp"
+#include "SyncQueue.h"
 #include "OS_util.cpp"
 
 
@@ -46,14 +46,16 @@ public:
     /**
      *
      *
-     * @param printInfo
-     * @param writeToFile
-     * @param asyncLog 异步日志
+     * @param isPrintInfo
+     * @param isWriteToFile
+     * @param isAsyncLog 异步日志
      */
-    explicit Logger(bool asyncLog = true, bool printInfo = true, bool writeToFile = true, bool isCleanOldLogFile = true) {
-        Logger::isWriteToFile = writeToFile;
-        Logger::isPrintInfo = printInfo;
-        Logger::isAsyncLog = asyncLog;
+    explicit Logger(bool isAsyncLog = true, bool isPrintInfo = true, bool isWriteToFile = true, bool isCleanOldLogFile = true):
+            pWriteThread(NULL)
+    {
+        Logger::isWriteToFile = isWriteToFile;
+        Logger::isPrintInfo = isPrintInfo;
+        Logger::isAsyncLog = isAsyncLog;
 
         if (isAsyncLog) {
             startWriteFileThread();
@@ -62,7 +64,6 @@ public:
         if (isCleanOldLogFile) {
             deleteLogFile();
         }
-
     }
 
 

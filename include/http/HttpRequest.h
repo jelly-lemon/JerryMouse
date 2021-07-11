@@ -5,6 +5,7 @@
 #ifdef WIN32
 #include <winsock2.h>
 #else
+
 #endif
 #include <map>
 #include <string>
@@ -22,7 +23,7 @@ private:
     map<string, string> requestLine;    // 请求行
     map<string, string> requestHeader;  // 请求头
     string requestBody;                 // 请求体
-    string requestRawData;                     // 客户端请求原始字符串，也就是服务端收到的原始字符串
+    string requestRawData;              // 客户端请求原始字符串，也就是服务端收到的原始字符串
 
     void parseRawData();
 
@@ -65,7 +66,7 @@ public:
      * @param recvTimeout 读取超时返回时间，单位是毫秒
      * @return 客户端发过来的原始字符串
      */
-    string recvData(int recvTimeout = 0) {
+    string recvData(int recvTimeout = 0) const {
         const int len = 1024;
         char buf[len];
         int code;
@@ -99,7 +100,7 @@ public:
             }
         }
 
-        info("[socket %s] request\n%s\n", getSocketIPPort(clientSocket).c_str(), data.c_str());
+        info("[socket %s] socket %d request\n%s\n", getSocketIPPort(clientSocket).c_str(), clientSocket, data.c_str());
         return data;
     }
 

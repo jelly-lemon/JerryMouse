@@ -1,4 +1,5 @@
 #pragma once
+
 #include <winsock2.h>
 #include <string>
 #include "unordered_map"
@@ -9,11 +10,7 @@
 using namespace std;
 
 
-
-
-
-
-class HttpServer_v4_1: public HttpServer {
+class HttpServer_v4_1 : public HttpServer {
 public:
 
     static HANDLE g_hIOCP;
@@ -55,7 +52,8 @@ public:
             // 将连接 socket 与完成端口绑定
             //
             if (CreateIoCompletionPort((HANDLE) client, g_hIOCP, 0, 0) == NULL) {
-                err("[socket %s] CreateIoCompletionPort failed, Err: %s\n", getSocketIPPort(client).c_str(), getErrorInfo().c_str())
+                err("[socket %s] CreateIoCompletionPort failed, Err: %s\n", getSocketIPPort(client).c_str(),
+                    getErrorInfo().c_str())
                 subConnectionNumber();
                 closeSocket(client);
             } else {
@@ -65,7 +63,7 @@ public:
                 IO_DATA *pIoData = new IO_DATA;
                 memset(&pIoData->Overlapped, 0, sizeof(pIoData->Overlapped));
                 pIoData->opCode = RECV_FINISHED;
-                int bufLen = 8*1024;    // 要是数据量比这个空间大怎么办？
+                int bufLen = 8 * 1024;    // 要是数据量比这个空间大怎么办？
                 pIoData->wsabuf.buf = new char[bufLen];
                 memset(pIoData->wsabuf.buf, '\0', bufLen);
                 pIoData->wsabuf.len = bufLen;
@@ -128,7 +126,8 @@ public:
             // ---------------------------------------------
             pIoData = (IO_DATA *) lpOverlapped;
             if (dwIoSize == 0) {
-                info("[socket %s] socket %d disconnected.\n", getSocketIPPort(pIoData->client).c_str(), pIoData->client);
+                info("[socket %s] socket %d disconnected.\n", getSocketIPPort(pIoData->client).c_str(),
+                     pIoData->client);
                 closeSocket(pIoData->client);
                 subConnectionNumber();
                 delete pIoData;

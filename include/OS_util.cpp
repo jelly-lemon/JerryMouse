@@ -10,6 +10,10 @@
 
 using namespace std;
 
+/**
+ * 获取线程 ID
+ * @return
+ */
 unsigned long int getThreadID() {
     unsigned long int tid = 0;
 #ifdef WIN32

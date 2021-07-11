@@ -2,10 +2,10 @@
 
 
 #include <string>
-#include "../CrossPlatform.h"
-#include "../Logger.h"
-#include "../util.h"
-#include "../SocketHelper.h"
+#include "CrossPlatform.h"
+#include "Logger.h"
+#include "util.h"
+#include "SocketHelper.h"
 #include "FileHelper.h"
 
 #ifdef WIN32
@@ -20,16 +20,19 @@ using namespace std;
  */
 class HttpServer {
 private:
-    unsigned int connectionNumber;
-    mutex numLock;
-    int port;
-    string ip;
-    int backlog;
+    unsigned int connectionNumber;  // 连接数量
+    mutex mutexConnectionNumber;    // 连接数量互斥锁
+    int port;                       // 监听端口
+    string ip;                      // 监听 IP
+    int backlog;                    // 全连接队列容量
 
+    /**
+     * 处理 accept
+     */
     virtual void handleAccept() = 0;
 
 protected:
-    SOCKET acceptSocket;
+    SOCKET acceptSocket;            // 监听 socket
 
 
 public:
@@ -42,27 +45,21 @@ public:
 
     static const string rootDir;  // 资源所在根目录
 
-    void startServer(bool isNonBlocking = true) {
-        info(" --------- starting Server ---------\n")
-        info(" main thread tid: %ld\n", getThreadID());
-        try {
-            info(" web_root dir is %s\n", getAbsPath(HttpServer::rootDir).c_str())
-            acceptSocket = createListenSocket(port, ip, isNonBlocking, backlog);
-        } catch (exception &e) {
-            err(" --------- startServer failed, Err: %s ---------\n", e.what());
-            safeExit(-1);
-        }
-        info(" --------- Server started ---------\n");
-        handleAccept();
-    }
 
 
+
+    /**
+     * 获取当前连接数量
+     */
     unsigned int getConnectionNumber() {
-        lock_guard<mutex> lockGuard(numLock);
+        lock_guard<mutex> lockGuard(mutexConnectionNumber);
         return connectionNumber;
     }
 
 
+    /**
+     * 获取监听 socket
+     */
     SOCKET getAcceptSocket() const {
         return acceptSocket;
     }
@@ -71,7 +68,7 @@ public:
      * 现有连接数量加 1
      */
     void addConnectionNumber() {
-        lock_guard<mutex> guarder(numLock);
+        lock_guard<mutex> guarder(mutexConnectionNumber);
         connectionNumber++;
         info(" addConnectionNumber: %d\n", connectionNumber);
     }
@@ -80,9 +77,36 @@ public:
      * 现有连接数量减 1
      */
     void subConnectionNumber() {
-        lock_guard<mutex> guarder(numLock);
+        lock_guard<mutex> guarder(mutexConnectionNumber);
         connectionNumber--;
         info(" subConnectionNumber: %d\n", connectionNumber);
+    }
+
+    /**
+     * 启动服务端
+     *
+     * @param isNonBlocking 监听 socket 是否非阻塞
+     */
+    void startServer() {
+        //
+        // 启动 server
+        //
+        info(" --------- starting Server ---------\n")
+        info(" main thread tid: %ld\n", getThreadID());
+        try {
+            info(" web_root dir is %s\n", getAbsPath(HttpServer::rootDir).c_str())
+            acceptSocket = createListenSocket(port, ip);
+        } catch (exception &e) {
+            err(" --------- startServer failed, Err: %s ---------\n", e.what());
+            safeExit(-1);
+        }
+        info(" --------- Server started ---------\n");
+
+        //
+        // 处理连接请求
+        //
+        info(" waiting for connection...\n");
+        handleAccept();
     }
 };
 

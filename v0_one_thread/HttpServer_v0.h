@@ -1,9 +1,7 @@
 #pragma once
 
-#include <thread>
-#include <functional>
-#include "../include/http/HttpResponse.h"
-#include "../include/http/HttpServer.h"
+#include "http/HttpResponse.h"
+#include "http/HttpServer.h"
 
 using namespace std;
 
@@ -14,25 +12,26 @@ public:
 
     }
 
-
-    void startServer() {
-        HttpServer::startServer();
+private:
+    void handleAccept() override {
 
         while (true) {
             sockaddr connAddr = {};
             int addrLen = sizeof(connAddr);
-            //
-            // 接收连接，启动处理线程
-            //
-            SOCKET newConnSocket = accept(acceptSocket, &connAddr, &addrLen);
-            info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
-            try {
-                HttpResponse response(newConnSocket);
-                response.handleRequest();
-            } catch (exception &e) {
-                info(" handleRequest failed, Err: %s\n", e.what());
+            SOCKET clientSocket = accept(acceptSocket, &connAddr, &addrLen);
+            if (clientSocket == SOCKET_ERROR) {
+                err(" accept failed, Err: %s\n", getErrorInfo().c_str());
+            } else {
+                info("[socket %s] new socket %d\n", getSocketIPPort(clientSocket).c_str(), clientSocket);
             }
-            closeSocket(newConnSocket);
+            try {
+                HttpResponse response(clientSocket);
+                response.handleRequest();
+            } catch(exception &e) {
+                err(" handleRequest failed, Err: %s\n", getErrorInfo().c_str());
+            }
+
+            closeSocket(clientSocket);
         }
     }
 };

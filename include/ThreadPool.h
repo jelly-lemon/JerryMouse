@@ -3,7 +3,7 @@
 #include <thread>
 #include <functional>
 #include "http/HttpResponse.h"
-#include "SyncQueue.cpp"
+#include "SyncQueue.h"
 #include "Logger.h"
 
 using namespace std;
@@ -11,45 +11,100 @@ using namespace std;
 /**
  * 对线程池封装成类
  */
-template<class QueueElement>
 class ThreadPool {
 private:
-    int poolSize;                       // 线程池容量
-    mutex mutexWorkerNumber;            // currentWorkerNumber 互斥量
-    int currentWorkerNumber;            // 当前 worker 数量
-    SyncQueue<QueueElement> taskQueue;  // 任务队列
-    function<void()> onTaskFinishedCallback;
+    int poolSize;                           // 线程池容量
+    int currentWorkerNumber;                // 当前 worker 数量
+    mutex mutexWorkerNumber;                // currentWorkerNumber 互斥量
+    SyncQueue<function<void()>> taskQueue;  // 任务队列
+    bool isBlockingWaitTask;    // 阻塞等待
 
 public:
-
     /**
      * 线程池初始化
      */
-    explicit ThreadPool(int poolSize = 0):
-            poolSize(poolSize),
-            currentWorkerNumber(0),
-            onTaskFinishedCallback(NULL){
+    explicit ThreadPool(int poolSize = 0, bool isBlockingWaitTask = true):
+    poolSize(poolSize),currentWorkerNumber(0), isBlockingWaitTask(isBlockingWaitTask){
         if (poolSize == 0) {
             this->poolSize = getCPULogicCoresNumber() + 1;
         }
         info(" new ThreadPool, poolSize: %d\n", this->poolSize);
+        createThread();
     }
 
-    bool submitTask(QueueElement task);
+    /**
+     * 创建工作线程
+     */
+    void createThread() {
+        int n = poolSize - currentWorkerNumber;
+        for (int i = 0; i < n; i++) {
+            thread worker(ThreadPool::worker_main, this);
+            worker.detach();
+        }
+    }
+
+    /**
+     * 子线程函数
+     */
+    static void* worker_main(ThreadPool *pThreadPool) {
+        //
+        // 取任务并执行
+        //
+        info(" new worker: %d\n", getThreadID());
+        pThreadPool->addWorkerNumber();
+        while (true) {
+            try {
+                function<void()> task = pThreadPool->getTask(pThreadPool->isBlockingWaitTask);
+                task();
+            } catch(exception &e) {
+                info(" worker finished, info: %s\n", e.what());
+                break;
+            }
+        }
+
+        //
+        // 退出线程
+        //
+        pThreadPool->subWorkerNumber();
+
+        return NULL;
+    }
+
+    /**
+     * 提交任务到队列
+     *
+     * @return: 提交成功或失败
+     */
+    bool submitTask(function<void()> task) {
+        if (taskQueue.put(task)) {
+            info(" submitTask: %d\n", taskQueue.getSize());
+            return true;
+        } else {
+            info(" submitTask failed, task size: %d, it's full\n", taskQueue.getSize());
+        }
+
+        return false;
+    }
+
+    function<void()> getTask(bool isBlocking = false) {
+        function<void()> task = taskQueue.get(isBlocking);
+        info(" getTask: %d\n", taskQueue.getSize());
+
+        return task;
+    }
 
 
-    QueueElement getTask();
+    void addWorkerNumber() {
+        lock_guard<mutex> lockGuard(mutexWorkerNumber);
+        currentWorkerNumber++;
+        info(" addWorkerNumber: %d\n", currentWorkerNumber);
+    }
 
-
-    void setOnTaskFinishedCallback(function<void()> onTaskFinishedCallback);
-
-    void subWorkerNumber();
-
-    void addWorkerNumber();
-
-    static void *worker_main(ThreadPool *pThreadPool);
-
-    static void setWorkerFunc(function<void()> workerFunc);
+    void subWorkerNumber() {
+        lock_guard<mutex> lockGuard(mutexWorkerNumber);
+        currentWorkerNumber--;
+        info(" subWorkerNumber: %d\n", currentWorkerNumber);
+    }
 };
 
 
@@ -57,90 +112,6 @@ public:
 
 
 
-/**
- * 子线程函数
- */
-template<class QueueElement>
-void* ThreadPool<QueueElement>::worker_main(ThreadPool<QueueElement> *pThreadPool) {
-    //
-    // 取任务并执行
-    //
-    pThreadPool->addWorkerNumber();
-    while (true) {
-        try {
-            QueueElement element = pThreadPool->getTask();
-            SOCKET connSocket = element.first;
-            long acceptedTime = element.second;
-            info("[socket %s] socket %d wait time: %d ms\n", getSocketIPPort(connSocket).c_str(), connSocket,
-                 getTimeDiff(acceptedTime));
-            HttpResponse response(connSocket);
-            response.handleRequest();
-            if (pThreadPool->onTaskFinishedCallback != NULL) {
-                pThreadPool->onTaskFinishedCallback();
-            }
-        } catch(exception &e) {
-            info(" worker finished, info: %s\n", e.what());
-            break;
-        }
-    }
-
-    //
-    // 退出线程
-    //
-    pThreadPool->subWorkerNumber();
-
-    return NULL;
-}
-
-/**
- * 提交任务到队列
- *
- * @return: 提交成功或失败
- */
-template<class QueueElement>
-bool ThreadPool<QueueElement>::submitTask(QueueElement task) {
-    if (taskQueue.put(task)) {
-        info(" task size: %d\n", taskQueue.getSize());
-        if (currentWorkerNumber < poolSize) {
-            thread worker(ThreadPool::worker_main, this);
-            worker.detach();
-        }
-        return true;
-    }
-
-    return false;
-}
-
-
-/**
- * 获取任务
- */
-template<class QueueElement>
-QueueElement ThreadPool<QueueElement>::getTask() {
-    return taskQueue.get();
-}
-
-
-
-template<class QueueElement>
-void ThreadPool<QueueElement>::setOnTaskFinishedCallback(function<void()> onTaskFinishedCallback) {
-    this->onTaskFinishedCallback = onTaskFinishedCallback;
-}
-
-
-template<class QueueElement>
-void ThreadPool<QueueElement>::addWorkerNumber() {
-    lock_guard<mutex> lockGuard(mutexWorkerNumber);
-    currentWorkerNumber++;
-    info(" addWorkerNumber: %d\n", currentWorkerNumber);
-}
-
-template<class QueueElement>
-void ThreadPool<QueueElement>::subWorkerNumber() {
-    lock_guard<mutex> lockGuard(mutexWorkerNumber);
-    currentWorkerNumber--;
-    info(" subWorkerNumber: %d\n", currentWorkerNumber);
-}
 
 
 

@@ -14,51 +14,60 @@ using namespace std;
  */
 class HttpServer_v1_1 : public HttpServer{
 private:
-    ThreadPool<pair<SOCKET, long>> threadPool;
+    ThreadPool *pThreadPool;
+
+
+
+    void handleAccept() override {
+        if (pThreadPool == NULL) {
+            err(" please setThreadPool\n");
+            safeExit(-1);
+        }
+
+        //
+        // 接收连接
+        //
+        while (true) {
+            sockaddr connAddr = {};
+            int addrLen = sizeof(connAddr);
+            SOCKET newConnSocket = accept(acceptSocket, &connAddr, &addrLen);
+            info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
+            long acceptedTime = getTickCount();
+            //
+            // 提交任务
+            //
+            pThreadPool->submitTask(bind(task, newConnSocket, acceptedTime));
+        }
+    }
+
+    static void task(SOCKET clientSocket, long acceptedTime) {
+        long waitTime = getTimeDiff(acceptedTime);
+        info("[socket %s] socket %d wait time: %d ms\n", getSocketIPPort(clientSocket).c_str(), clientSocket, waitTime);
+        try {
+            HttpResponse httpResponse(clientSocket);
+            httpResponse.handleRequest();
+        } catch (exception &e) {
+            err(" task() failed, Err: %s\n", e.what());
+        }
+    }
+
+
 
 public:
-    explicit HttpServer_v1_1(): threadPool(0)   {
-#ifdef WIN32
-        initWSA();
-#endif
+    explicit HttpServer_v1_1(int port = 80, string ip = "127.0.0.1", int backlog = 65535) :
+            HttpServer(port, ip, backlog) {
+
     }
 
+    /**
+     * 设置线程池对象
+     *
+     * @param pThreadPool
+     */
+    void setThreadPool(ThreadPool *pThreadPool) {
+        this->pThreadPool = pThreadPool;
+    }
 
-    void startServer();
 };
-
-
-
-
-/**
- * 开启 Web Server
- *
- * @param ip 本机 ip 地址
- * @param port 监听端口
- * @param maxSocketNumber 最大监听 socket 数量
-*/
-void HttpServer_v1_1::startServer(int port, string ip, int backlog) {
-    info(" starting Server...\n")
-
-    //
-    // 创建监听 socket
-    //
-    SOCKET acceptSocket = createListenSocket(port, backlog, ip);
-
-    //
-    // 接收连接
-    //
-    while (true) {
-        sockaddr connAddr = {};
-        int addrLen = sizeof(connAddr);
-        SOCKET newConnSocket = accept(acceptSocket, &connAddr, &addrLen);
-        info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
-        long acceptedTime = getTickCount();
-        //
-        // 提交任务
-        //
-        threadPool.submitTask(make_pair(newConnSocket, acceptedTime));
-    }
-}
 
 
