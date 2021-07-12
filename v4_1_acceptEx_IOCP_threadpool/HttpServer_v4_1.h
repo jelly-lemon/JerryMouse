@@ -38,7 +38,7 @@ public:
         IO_DATA *pIoData = new IO_DATA;
         memset(&pIoData->Overlapped, 0, sizeof(pIoData->Overlapped));
         pIoData->opCode = NEW_ACCEPT;
-        int bufLen = 8*1024;
+        int bufLen = 100;
         pIoData->wsabuf.buf = new char[bufLen];
         memset(pIoData->wsabuf.buf, '\0', bufLen);
         pIoData->wsabuf.len = bufLen;
@@ -62,13 +62,11 @@ public:
     }
 
 
-
     void handleAccept() override {
         //
         // 创建完成端口和工作线程
         //
-//        int nWorker = getCPULogicCoresNumber() * 2 + 1;
-        int nWorker = 1;
+        int nWorker = 2;
         g_hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
         if (g_hIOCP == NULL) {
             err(" CreateIoCompletionPort failed, Err: %s\n", getErrorInfo().c_str());
@@ -105,6 +103,9 @@ public:
         }
 
 
+        //
+        // 提前创建 socket
+        //
         for (int i = 0; i < getCPULogicCoresNumber() + 1; i++) {
             SOCKET client = createSocket();
             postAccept(client);
@@ -128,6 +129,7 @@ public:
         HANDLE hEvent = CreateEvent(NULL, FALSE, FALSE, "ShutdownEvent");
         WaitForSingleObject(hEvent, INFINITE);
         CloseHandle(hEvent);
+
     }
 
 
@@ -138,10 +140,7 @@ public:
      * @return
      */
     static DWORD WINAPI worker_main(HttpServer_v4_1 *pServer) {
-
-
         info(" new worker\n");
-
 
         while (1) {
             IO_DATA *pIoData = NULL;
@@ -163,36 +162,29 @@ public:
             }
 
             if (pIoData->opCode == NEW_ACCEPT) {
+                //
+                // TODO 要在这里判断是否读取了完整的数据
+                //
                 info(" new socket: %d\n", pIoData->client);
-                //
-                // 初始化 IO_DATA 结构体
-                //
-                IO_DATA *pRecvData = new IO_DATA;
-                memset(&pRecvData->Overlapped, 0, sizeof(pRecvData->Overlapped));
-                pRecvData->opCode = RECV_FINISHED;
-                int bufLen = 8*1024;
-                pRecvData->wsabuf.buf = new char[bufLen];
-                memset(pRecvData->wsabuf.buf, '\0', bufLen);
-                pRecvData->wsabuf.len = bufLen;
-                pRecvData->client = pIoData->client;
+
+                info(" data: %s\n", pIoData->wsabuf.buf);
 
                 //
                 // 提交 Recv
                 //
                 DWORD dwFlags = 0; // 0: in 1: out
-                int nRet = WSARecv(pRecvData->client, &pRecvData->wsabuf, 1, NULL,
+                DWORD dwBytes = 0;
+                pIoData->opCode = RECV_FINISHED;
+                int nRet = WSARecv(pIoData->client, &pIoData->wsabuf, 1, &dwBytes,
                                    &dwFlags,
-                                   &pRecvData->Overlapped, NULL);
+                                   &pIoData->Overlapped, NULL);
                 if (nRet == SOCKET_ERROR && (ERROR_IO_PENDING != WSAGetLastError())) {
                     err(" post WSARecv Failed, Err: %s\n", getErrorInfo().c_str())
                     closeSocket(pIoData->client);
-                    delete pRecvData;
+                    delete pIoData;
                 } else {
                     info(" post WSARecv succeed, socket: %d\n", pIoData->client);
                 }
-
-                delete pIoData;
-
             } else if (pIoData->opCode == RECV_FINISHED) {
                 info(" WSARecv finished, socket: %d\n", pIoData->client);
                 //
@@ -238,7 +230,7 @@ public:
                     IOCPHttpResponse response(request, pIoData);
                     response.handleRequest();
                 } catch (exception &e) {
-                    err(" handleRequest failed, %s, %s\n", e.what(), getErrorInfo().c_str());
+                    err(" handleRequest failed, Err: %s\n", e.what());
                     closeSocket(pIoData->client);
                     delete pIoData;
                     continue;

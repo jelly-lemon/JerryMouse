@@ -64,6 +64,9 @@ void safeExit(int code, string exitInfo = "") {
 
 /**
  * 获取错误信息
+ *
+ * 官方文档：
+ * https://docs.microsoft.com/en-us/windows/win32/winsock/windows-sockets-error-codes-2
  */
 string getErrorInfo() {
 #ifdef linux
@@ -101,6 +104,9 @@ string getErrorInfo() {
             break;
         case WSA_INVALID_HANDLE:
             err_info += "WSA_INVALID_HANDLE, Specified event object handle is invalid";
+            break;
+        case WSAEFAULT:
+            err_info += "WSAEFAULT, maybe the length of the buffer is too small";
             break;
         default:
             err_info += to_string(err_code);
