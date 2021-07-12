@@ -170,3 +170,23 @@ int closeSocket(SOCKET clientSocket) {
     return n;
 }
 
+
+    /**
+     * 提前创建客户端 socket
+     *
+     * @return 客户端 socket
+     */
+SOCKET createSocket() {
+    //
+    // 提前创建好 socket
+    //
+    SOCKET newSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (newSocket == INVALID_SOCKET) {
+        err(" create socket failed, Err: %s\n", getErrorInfo().c_str());
+        safeExit(-1);
+    } else {
+        info(" create socket succeed, socket: %d\n", newSocket);
+    }
+
+    return newSocket;
+}

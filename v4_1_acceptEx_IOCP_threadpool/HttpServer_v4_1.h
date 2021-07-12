@@ -4,6 +4,7 @@
 #include <string>
 #include <mswsock.h>
 #include <wownt32.h>
+#include <mstcpip.h>
 #include "unordered_map"
 #include "http/HttpServer.h"
 #include "http/IOCPHttpResponse.h"
@@ -24,55 +25,56 @@ public:
 
     }
 
-    SOCKET createSocket() {
+
+    /**
+     * 提交 accept 请求
+     *
+     * @param client
+     */
+    void postAccept(SOCKET client) {
         //
-        // 提前创建好 socket
+        // 初始化 IO_DATA 结构体
         //
-        SOCKET client = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-        if (client == INVALID_SOCKET) {
-            err(" create socket failed, Err: %s\n", getErrorInfo().c_str());
-            safeExit(-1);
-        }
+        IO_DATA *pIoData = new IO_DATA;
+        memset(&pIoData->Overlapped, 0, sizeof(pIoData->Overlapped));
+        pIoData->opCode = NEW_ACCEPT;
+        int bufLen = 8*1024;
+        pIoData->wsabuf.buf = new char[bufLen];
+        memset(pIoData->wsabuf.buf, '\0', bufLen);
+        pIoData->wsabuf.len = bufLen;
+        pIoData->client = client;
+        pIoData->acceptCompletedTime = GetTickCount();
 
         //
         // 提交 AcceptEx
         //
         DWORD dwBytes;
-        char lpOutputBuf[1024];
-        int outBufLen = 1024;
-        WSAOVERLAPPED olOverlap;
-        memset(&olOverlap, 0, sizeof (olOverlap));
-        bool bRetVal = lpfnAcceptEx(listenSocket, client, lpOutputBuf,
-                                    outBufLen - ((sizeof(sockaddr_in) + 16) * 2),
+        bool bRetVal = lpfnAcceptEx(listenSocket, pIoData->client, pIoData->wsabuf.buf,
+                                    bufLen - ((sizeof(sockaddr_in) + 16) * 2),
                                     sizeof(sockaddr_in) + 16, sizeof(sockaddr_in) + 16,
-                                    &dwBytes, &olOverlap);
+                                    &dwBytes, &pIoData->Overlapped);
         if (bRetVal == FALSE && getErrorCode() != WSA_IO_PENDING) {
             err(" AcceptEx failed, Err: %s\n", getErrorInfo().c_str());
             safeExit(-1);
+        } else {
+            info(" AcceptEx succeed, socket: %d\n", pIoData->client);
         }
-
-
-        if (CreateIoCompletionPort((HANDLE) client, g_hIOCP, 0, 0) == NULL) {
-                err("bind clientSocket %d to IOCP failed, Err: %s\n",
-                    client,
-                    getErrorInfo().c_str())
-                safeExit(-1);
-            }
-
-        return client;
     }
+
+
 
     void handleAccept() override {
         //
         // 创建完成端口和工作线程
         //
-        int nWorker = getCPULogicCoresNumber() * 2 + 1;
-        g_hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, nWorker);
+//        int nWorker = getCPULogicCoresNumber() * 2 + 1;
+        int nWorker = 1;
+        g_hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
         if (g_hIOCP == NULL) {
             err(" CreateIoCompletionPort failed, Err: %s\n", getErrorInfo().c_str());
             safeExit(-1);
         }
-        for (int i = 0; i < 1; ++i) {
+        for (int i = 0; i < nWorker; ++i) {
             thread worker(worker_main, this);
             worker.detach();
         }
@@ -98,71 +100,34 @@ public:
         if (iResult == SOCKET_ERROR) {
             err(" WSAIoctl failed, Err: %s\n", getErrorInfo().c_str());
             safeExit(-1);
+        } else {
+            info(" load AcceptEx succeed\n");
         }
 
-        while (true) {
+
+        for (int i = 0; i < getCPULogicCoresNumber() + 1; i++) {
             SOCKET client = createSocket();
-
-            while (true) {
-                WSAEVENT EventArray[1];
-                EventArray[0] = WSACreateEvent();
-                int Index = WSAWaitForMultipleEvents(1, EventArray, FALSE, WSA_INFINITE, TRUE);
-
-                if (Index == WSA_WAIT_FAILED) {
-                    err(" WSAWaitForMultipleEvents failed, Err: %s\n", getErrorInfo().c_str());
-                    safeExit(-1);
-                }
-
-                if (Index != WAIT_IO_COMPLETION) {
-                    // The AcceptEx() event is ready, break the wait loop
-                    info(" new socket\n");
-                    break;
-                }
-                info(" waiting...\n");
-            }
-
+            postAccept(client);
 
             //
-            // 初始化 IO_DATA 结构体
+            // 绑定端口
             //
-            IO_DATA *pIoData = new IO_DATA;
-            memset(&pIoData->Overlapped, 0, sizeof(pIoData->Overlapped));
-            pIoData->opCode = RECV_FINISHED;
-            int bufLen = 8 * 1024;    // TODO 要是数据量比这个空间大怎么办？
-            pIoData->wsabuf.buf = new char[bufLen];
-            memset(pIoData->wsabuf.buf, '\0', bufLen);
-            pIoData->wsabuf.len = bufLen;
-            pIoData->client = client;
-
-            //
-            // 将连接 socket 与完成端口绑定
-            //
-//            if (CreateIoCompletionPort((HANDLE) pIoData->client, g_hIOCP, 0, 0) == NULL) {
-//                err("[socket %s] bind clientSocket to IOCP failed, Err: %s\n",
-//                    getSocketIPPort(pIoData->client).c_str(),
-//                    getErrorInfo().c_str())
-//                safeExit(-1);
-//            }
-
-            //
-            // 向内核提交 recv 请求
-            //
-            // --------------------------------------------
-            //
-            // WSARecv 非阻塞，在这个 Socket 上提交一个读取数据的请求，然后内核就会去读取数据
-            // 然后在子线程中用 GetQueuedCompletionStatus 阻塞等待读取结果
-            //
-            // --------------------------------------------
-            DWORD dwFlags = 0;
-            int nRet = WSARecv(pIoData->client, &pIoData->wsabuf, 1, NULL,
-                               &dwFlags,
-                               &pIoData->Overlapped, NULL);
-            if (nRet == SOCKET_ERROR && (ERROR_IO_PENDING != WSAGetLastError())) {
-                err(" WASRecv failed, Err: %s\n", getErrorInfo().c_str())
-                closeSocket(pIoData->client);
-                delete pIoData;
+            if (CreateIoCompletionPort((HANDLE) client, g_hIOCP, 0, 0) == NULL) {
+                err(" bind socket %d to IOCP failed, Err: %s\n", client, getErrorInfo().c_str())
+                closeSocket(client);
+            } else {
+                debug(" bind socket %d to IOCP succeed\n", client);
             }
         }
+
+
+
+        //
+        // 创建事件对象，让ServerShutdown程序能够关闭自己
+        //
+        HANDLE hEvent = CreateEvent(NULL, FALSE, FALSE, "ShutdownEvent");
+        WaitForSingleObject(hEvent, INFINITE);
+        CloseHandle(hEvent);
     }
 
 
@@ -173,31 +138,17 @@ public:
      * @return
      */
     static DWORD WINAPI worker_main(HttpServer_v4_1 *pServer) {
-        IO_DATA *pIoData = NULL;
-        void *lpCompletionKey = NULL;
-        LPOVERLAPPED lpOverlapped = NULL;
-        DWORD dwIoSize = 0;
+
 
         info(" new worker\n");
-//        HANDLE stopEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-//        while (WAIT_OBJECT_0 != WaitForSingleObject(stopEvent, 0)) {
-//            info(" WaitForSingleObject\n");
-//
-//            //
-//            // 从完成端口获取一个 IO 包，没有则会被挂起
-//            //
-//            bool success = GetQueuedCompletionStatus(g_hIOCP, &dwIoSize, (PULONG_PTR) &lpCompletionKey,
-//                                                     (LPOVERLAPPED *) &lpOverlapped, INFINITE);
-//            if (!success) {
-//                err(" GetQueuedCompletionStatus failed, Err: %s\n", getErrorInfo().c_str())
-//                continue;
-//            }
-//        }
-
-
 
 
         while (1) {
+            IO_DATA *pIoData = NULL;
+            void *lpCompletionKey = NULL;
+            LPOVERLAPPED lpOverlapped = NULL;
+            DWORD dwIoSize = 0;
+
             //
             // 从完成端口获取一个 IO 包，没有则会被挂起
             //
@@ -207,32 +158,64 @@ public:
                 err(" GetQueuedCompletionStatus failed, Err: %s\n", getErrorInfo().c_str())
                 continue;
             } else {
-                info(" GetQueuedCompletionStatus succeed\n");
-                continue;
+                info(" GetQueuedCompletionStatus succeed\n")
+                pIoData = (IO_DATA *) lpOverlapped;
             }
 
-            //
-            // 如果客户端已经关闭，跳出本次循环
-            //
-            // ---------------------------------------------
-            //
-            // 【注意】 Overlapped 必须是结构体第一个成员，
-            // 否则 lpOverlapped 就无法转成 IO_DATA
-            //
-            // ---------------------------------------------
-            pIoData = (IO_DATA *) lpOverlapped;
-            if (dwIoSize == 0) {
-                info("[socket %s] socket %d disconnected.\n", getSocketIPPort(pIoData->client).c_str(),
-                     pIoData->client);
-                closeSocket(pIoData->client);
+            if (pIoData->opCode == NEW_ACCEPT) {
+                info(" new socket: %d\n", pIoData->client);
+                //
+                // 初始化 IO_DATA 结构体
+                //
+                IO_DATA *pRecvData = new IO_DATA;
+                memset(&pRecvData->Overlapped, 0, sizeof(pRecvData->Overlapped));
+                pRecvData->opCode = RECV_FINISHED;
+                int bufLen = 8*1024;
+                pRecvData->wsabuf.buf = new char[bufLen];
+                memset(pRecvData->wsabuf.buf, '\0', bufLen);
+                pRecvData->wsabuf.len = bufLen;
+                pRecvData->client = pIoData->client;
+
+                //
+                // 提交 Recv
+                //
+                DWORD dwFlags = 0; // 0: in 1: out
+                int nRet = WSARecv(pRecvData->client, &pRecvData->wsabuf, 1, NULL,
+                                   &dwFlags,
+                                   &pRecvData->Overlapped, NULL);
+                if (nRet == SOCKET_ERROR && (ERROR_IO_PENDING != WSAGetLastError())) {
+                    err(" post WSARecv Failed, Err: %s\n", getErrorInfo().c_str())
+                    closeSocket(pIoData->client);
+                    delete pRecvData;
+                } else {
+                    info(" post WSARecv succeed, socket: %d\n", pIoData->client);
+                }
+
                 delete pIoData;
-                continue;
-            }
 
-            //
-            // WSARecv 完成，也就是读操作完成
-            //
-            if (pIoData->opCode == RECV_FINISHED) {
+            } else if (pIoData->opCode == RECV_FINISHED) {
+                info(" WSARecv finished, socket: %d\n", pIoData->client);
+                //
+                // WSARecv 完成，也就是读操作完成
+                //
+                //
+                // 如果客户端已经关闭，跳出本次循环
+                //
+                // ---------------------------------------------
+                //
+                // 【注意】 Overlapped 必须是结构体第一个成员，
+                // 否则 lpOverlapped 就无法转成 IO_DATA
+                //
+                // ---------------------------------------------
+                if (dwIoSize == 0) {
+                    info("[socket %s] socket %d disconnected.\n", getSocketIPPort(pIoData->client).c_str(),
+                         pIoData->client);
+                    closeSocket(pIoData->client);
+                    delete pIoData;
+                    continue;
+                }
+
+
                 pIoData->beginHandleTime = GetTickCount();
                 DWORD waitingTime = pIoData->beginHandleTime - pIoData->acceptCompletedTime;
                 info("[socket %s] waiting time: %d ms\n", getSocketIPPort(pIoData->client).c_str(), waitingTime);
@@ -275,7 +258,8 @@ public:
                 pServer->subConnectionNumber();
                 delete pIoData;
 
-                pServer->createSocket();
+                SOCKET client = createSocket();
+                pServer->postAccept(client);
 
                 continue;
             }

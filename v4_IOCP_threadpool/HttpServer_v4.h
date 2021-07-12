@@ -1,4 +1,4 @@
-// 本文件包含了处理连接的子线程函数、MiniWebServer_v4 类
+// 本文件包含了处理连接的子线程函数、HttpServer_v4 类
 #pragma once
 
 #ifndef WIN32
@@ -6,7 +6,7 @@
 #endif
 #include <winsock2.h>
 #include <string>
-#include "IOCPHttpResponse.cpp"
+#include "http/IOCPHttpResponse.h"
 
 using namespace std;
 
@@ -51,8 +51,8 @@ DWORD WINAPI t_worker(LPVOID WorkThreadContext) {
         pIoData = (IO_DATA *) lpOverlapped;
         if (dwIoSize == 0) {
             info("[socket %s] client disconnected.\n", getSocketIPPort(pIoData->client).c_str());
-            HttpResponse::closeSocket(pIoData->client);
-            Logger::subConnectionNumber();
+            closeSocket(pIoData->client);
+            subConnectionNumber();
             delete pIoData;
             continue;
         }
@@ -109,110 +109,28 @@ DWORD WINAPI t_worker(LPVOID WorkThreadContext) {
 /**
  * 对服务端封装成类
  */
-class MiniWebServer_v4 {
+class HttpServer_v4: public HttpServer{
 private:
 
     static string showAcceptSocketIPPort(SOCKET acceptSocket);
 
 
 public:
-    explicit MiniWebServer_v4() {
-        initWSA();
+    explicit HttpServer_v4(int port = 80, string ip = "127.0.0.1", int backlog = 65535): HttpServer(port, ip, backlog) {
+
     }
 
     void startServer(int port, int backlog, string ip = "");
 
     static SOCKET createListenSocket(int port, int backlog, string ip);
+
+
+private:
+    void handleAccept() override;
 };
 
 
-/**
- * 打印 acceptSocket 监听的 IP 和端口
- */
-string MiniWebServer_v4::showAcceptSocketIPPort(SOCKET acceptSocket) {
-    sockaddr_in socketAddr = {};
-    int len = sizeof(socketAddr);
-    getsockname(acceptSocket, (struct sockaddr *) &socketAddr, &len);
-    string listenIpPort = string(inet_ntoa(socketAddr.sin_addr)) + ":" + to_string(ntohs(socketAddr.sin_port));
-    info("server listen at %s\n", listenIpPort.c_str())
-
-    return listenIpPort;
-}
-
-/**
- * 创建监听 socket
- *
- * @param port
- * @param backlog
- * @param ip
- * @return
- */
-SOCKET MiniWebServer_v4::createListenSocket(int port, int backlog, string ip) {
-    //
-    // 创建监听 socket
-    //
-    // ---------------------------------------------------
-    //
-    // INADDR_ANY 表示监听所有网卡，也就是本机所有 IP 地址
-    //
-    // ---------------------------------------------------
-    SOCKADDR_IN addrSrv;
-    if (ip.empty() || ip == "0.0.0.0")
-        addrSrv.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
-    else if (ip == "localhost" || ip == "127.0.0.1") {
-        addrSrv.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
-    } else {
-        addrSrv.sin_addr.S_un.S_addr = inet_addr(ip.c_str());
-    }
-    addrSrv.sin_family = AF_INET;
-    addrSrv.sin_port = htons(port);
-    SOCKET acceptSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
-
-    //
-    // 绑定监听端口
-    //
-    int n = bind(acceptSocket, (SOCKADDR *) &addrSrv, sizeof(SOCKADDR));
-    if (n == SOCKET_ERROR) {
-        err("bind port %d failed, Err:%s\n", port, getErrorInfo().c_str())
-        safeExit(-1);
-    }
-
-    //
-    // 开始监听请求
-    //
-    //-------------------------------------------------------------
-    //
-    // 有两个队列：半连接（SYN_RCVD 状态）队列和全连接（ESTABLISHED 状态）队列
-    // backlog 指全连接队列大小
-    //
-    //-------------------------------------------------------------
-    listen(acceptSocket, backlog);
-    info("backlog is %d\n", backlog)
-    showAcceptSocketIPPort(acceptSocket);
-    if (port == 80) {
-        info("now, you can visit http://localhost to browse homepage.\n")
-    } else {
-        info("now, you can visit http://localhost:%d to browse homepage.\n", port)
-    }
-    info("web_root dir is %s\n", HttpResponse::rootDir.c_str())
-    info("waiting for connection...\n");
-
-    return acceptSocket;
-}
-
-
-/**
- * 开启 Web Server
- *
- * @param ip 本机 ip 地址
- * @param port 监听端口
- * @param maxSocketNumber 最大监听 socket 数量
-*/
-void MiniWebServer_v4::startServer(int port, int maxSocketNumber, string ip) {
-    //
-    // 创建监听 socket
-    //
-    SOCKET acceptSocket = createListenSocket(port, maxSocketNumber, ip);
+void HttpServer_v4::handleAccept() {
 
     //
     // 创建完成端口和工作线程
@@ -254,7 +172,7 @@ void MiniWebServer_v4::startServer(int port, int maxSocketNumber, string ip) {
             IO_DATA *pIoData = new IO_DATA;
             memset(&pIoData->Overlapped, 0, sizeof(pIoData->Overlapped));
             pIoData->opCode = RECV_FINISHED;
-            int bufLen = 8*1024*100;
+            int bufLen = 8 * 1024 * 100;
             pIoData->wsabuf.buf = new char[bufLen];
             memset(pIoData->wsabuf.buf, '\0', bufLen);
             pIoData->wsabuf.len = bufLen;

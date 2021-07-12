@@ -114,6 +114,10 @@ SyncQueue<string> Logger::msgQueue;
  * TODO Debug 打印
  */
 #define debug(...) {\
+    string sPrefix = Logger::getPrefix(); \
+    string info = Logger::getFormattedStr(__VA_ARGS__);\
+    string s = Logger::getFormattedStr("%s%s", sPrefix.c_str(), info.c_str());\
+    Logger::log(s);\
 }
 
 /**

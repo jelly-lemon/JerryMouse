@@ -55,6 +55,11 @@ if(WIN32)
     target_link_libraries(main_v4_1 ws2_32.lib)
 endif()
 
+add_executable(main_v4 v4_IOCP_threadpool/main_v4.cpp)
+if(WIN32)
+    target_link_libraries(main_v4 ws2_32.lib)
+endif()
+
 add_executable(test test.cpp)
 if(WIN32)
     target_link_libraries(test wsock32.lib)
