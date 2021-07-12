@@ -11,7 +11,7 @@
 using namespace std;
 
 /**
- * 获取 acceptSocket 监听的 IP 和端口
+ * 获取 listenSocket 监听的 IP 和端口
  */
 string getAcceptIPPort(SOCKET &acceptSocket) {
     sockaddr_in acceptAddr;
@@ -112,18 +112,18 @@ SOCKET createListenSocket(int port = 80, string ip = "", int backlog = 65535) {
     addrSrv.sin_family = AF_INET;
     // TODO 检查端口合法性
     addrSrv.sin_port = htons(port);
-    SOCKET acceptSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     //
     // 绑定监听端口
     //
-    int n = bind(acceptSocket, (sockaddr *) &addrSrv, sizeof(sockaddr));
+    int n = bind(listenSocket, (sockaddr *) &addrSrv, sizeof(sockaddr));
     if (n == -1) {
         err(" bind port %d failed, Err:%s\n", port, getErrorInfo().c_str())
         safeExit(-1);
     }
 #endif
-    info(" acceptSocket: %d\n", acceptSocket);
+    info(" listenSocket: %d\n", acceptSocket);
     info(" server listen at %s\n", getAcceptIPPort(acceptSocket).c_str());
 
 
@@ -164,7 +164,7 @@ int closeSocket(SOCKET clientSocket) {
         info("[socket %s] we closed socket %d.\n", strIpPort.c_str(), clientSocket);
     }
 #else
-    int n = close(clientSocket);
+    int n = close(listenSocket);
 #endif
 
     return n;

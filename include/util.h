@@ -73,7 +73,7 @@ string getErrorInfo() {
     string err_info;
     switch (err_code) {
         case WSAEADDRINUSE:
-            err_info += "port is in use, can't bind";
+            err_info += "WSAEADDRINUSE, port is in use, can't bind";
             break;
         case WSAENOTSOCK:
             err_info += "WSAENOTSOCK, Socket operation on nonsocket";
@@ -92,6 +92,15 @@ string getErrorInfo() {
             break;
         case WSANOTINITIALISED:
             err_info += "WSANOTINITIALISED, not WSAStartup";
+            break;
+        case WSA_IO_PENDING:
+            err_info += "WSA_IO_PENDING, Overlapped operations will complete later";
+            break;
+        case WSA_OPERATION_ABORTED:
+            err_info += "WSA_OPERATION_ABORTED, Overlapped operation aborted";
+            break;
+        case WSA_INVALID_HANDLE:
+            err_info += "WSA_INVALID_HANDLE, Specified event object handle is invalid";
             break;
         default:
             err_info += to_string(err_code);

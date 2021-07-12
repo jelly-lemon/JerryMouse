@@ -30,7 +30,7 @@ private:
         while (true) {
             sockaddr connAddr = {};
             int addrLen = sizeof(connAddr);
-            SOCKET newConnSocket = accept(acceptSocket, &connAddr, &addrLen);
+            SOCKET newConnSocket = accept(listenSocket, &connAddr, &addrLen);
             info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
             long acceptedTime = getTickCount();
             //

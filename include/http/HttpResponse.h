@@ -151,23 +151,24 @@ private:
         }
     }
 
-    /**
-     * 响应头 map 转字符串
-     */
-    string getStrHeader() {
-        string sendHeader;
-        map<string, string>::iterator iter;
-        for (iter = responseHeader.begin(); iter != responseHeader.end(); iter++) {
-            sendHeader += iter->first + ":" + iter->second + "\r\n";
-        }
-        sendHeader += "\r\n";
-
-        return sendHeader;
+protected:
+/**
+ * 响应头 map 转字符串
+ */
+string getStrHeader() {
+    string sendHeader;
+    map<string, string>::iterator iter;
+    for (iter = responseHeader.begin(); iter != responseHeader.end(); iter++) {
+        sendHeader += iter->first + ":" + iter->second + "\r\n";
     }
+    sendHeader += "\r\n";
+
+    return sendHeader;
+}
 
 public:
     /**
-     * 用 clientSocket 初始化，会自动创建一个 HttpRequest 对象，
+     * 用 listenSocket 初始化，会自动创建一个 HttpRequest 对象，
      * HttpRequest 会自动完成接收数据的工作
      */
     explicit HttpResponse(SOCKET clientSocket): httpRequest(clientSocket), clientSocket(clientSocket) {

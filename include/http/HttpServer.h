@@ -32,15 +32,19 @@ private:
     virtual void handleAccept() = 0;
 
 protected:
-    SOCKET acceptSocket;            // 监听 socket
+    SOCKET listenSocket;            // 监听 socket
 
 
 public:
     explicit HttpServer(int port = 80, string ip = "127.0.0.1", int backlog = 65535):
-    connectionNumber(0), acceptSocket(0), port(port), ip(ip), backlog(backlog) {
+            connectionNumber(0), listenSocket(0), port(port), ip(ip), backlog(backlog) {
 #ifdef WIN32
         initWSA();
 #endif
+    }
+
+    ~HttpServer() {
+        closeSocket(listenSocket);
     }
 
     static const string rootDir;  // 资源所在根目录
@@ -61,7 +65,7 @@ public:
      * 获取监听 socket
      */
     SOCKET getAcceptSocket() const {
-        return acceptSocket;
+        return listenSocket;
     }
 
     /**
@@ -95,7 +99,7 @@ public:
         info(" main thread tid: %ld\n", getThreadID());
         try {
             info(" web_root dir is %s\n", getAbsPath(HttpServer::rootDir).c_str())
-            acceptSocket = createListenSocket(port, ip);
+            listenSocket = createListenSocket(port, ip);
         } catch (exception &e) {
             err(" --------- startServer failed, Err: %s ---------\n", e.what());
             safeExit(-1);

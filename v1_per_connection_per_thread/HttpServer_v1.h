@@ -38,7 +38,7 @@ void HttpServer_v1::startServer() {
         //
         // 接收连接，启动处理线程
         //
-        SOCKET newConnSocket = accept(acceptSocket, &connAddr, &addrLen);
+        SOCKET newConnSocket = accept(listenSocket, &connAddr, &addrLen);
         info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
         long acceptedTime = getTickCount();
 //        thread t(worker_main, newConnSocket, acceptedTime, this);

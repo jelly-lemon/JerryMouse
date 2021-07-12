@@ -49,12 +49,12 @@ private:
         }
 
         //
-        // 将 epoll 对象与 acceptSocket 绑定
+        // 将 epoll 对象与 listenSocket 绑定
         //
         epoll_event ev = {};
         ev.events = EPOLLIN;    //  事件类型
-        ev.data.fd = acceptSocket;
-        epoll_ctl(epfd, EPOLL_CTL_ADD, acceptSocket, &ev);
+        ev.data.fd = listenSocket;
+        epoll_ctl(epfd, EPOLL_CTL_ADD, listenSocket, &ev);
 
         //
         // 监听客户端连接
@@ -73,21 +73,21 @@ private:
             for (int i = 0; i < nfds; i++) {
                 int fd = events[i].data.fd;
                 // 如果是监听 socket
-                if (fd == acceptSocket) {
+                if (fd == listenSocket) {
                     while (true) {
                         //
                         // 获取连接 socket
                         //
                         sockaddr clientAddr;
                         socklen_t addrLen = sizeof(sockaddr);
-                        int connSocket = accept(acceptSocket, &clientAddr, &addrLen);
+                        int connSocket = accept(listenSocket, &clientAddr, &addrLen);
                         if (connSocket == -1) {
                             if (errno != EAGAIN && errno != ECONNABORTED && errno != EPROTO && errno != EINTR) {
                                 err(" accept failed, Err: %s\n", getErrorInfo().c_str());
                             }
                             break;
                         } else {
-                            acceptedTime[acceptSocket] = getTickCount();
+                            acceptedTime[listenSocket] = getTickCount();
                         };
 
                         //

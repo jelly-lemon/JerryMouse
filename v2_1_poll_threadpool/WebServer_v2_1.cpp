@@ -55,7 +55,7 @@ void WebServer_v2_1::startServer(int port, string ip, int backlog) {
     SOCKET acceptSocket = createListenSocket(port, backlog, ip);
     unsigned long ul = 1;
     ioctlsocket(acceptSocket, FIONBIO, &ul);    //设置成非阻塞模式
-    info(" acceptSocket: %d\n", acceptSocket)
+    info(" listenSocket: %d\n", acceptSocket)
 
     //
     // 创建相应集合
@@ -97,12 +97,12 @@ void WebServer_v2_1::startServer(int port, string ip, int backlog) {
         } else {
             info(" select succeed\n");
             //
-            // 只有 acceptSocket 有连接事件，其余 socket 都没数据
+            // 只有 listenSocket 有连接事件，其余 socket 都没数据
             //
             if (readable_fds.fd_count == 1 && FD_ISSET(acceptSocket, &readable_fds) &&
                 to_be_checked_fds.fd_count > 1) {
-                // 去除 acceptSocket，下次 select 就没有 acceptSocket 了
-                info(" acceptSocket has events, but other sockets don't\n");
+                // 去除 listenSocket，下次 select 就没有 listenSocket 了
+                info(" listenSocket has events, but other sockets don't\n");
                 FD_CLR(acceptSocket, &to_be_checked_fds);
                 continue;
             }
@@ -169,7 +169,7 @@ void WebServer_v2_1::startServer(int port, string ip, int backlog) {
                 } else {
                     //
                     // 若该连接 socket 没有任何事件，则放入下一次 select 集合中
-                    // 当 acceptSocket 也没有事件时，也会进入这块，要在这里判断一下，避免两次将 acceptSocket 加入集合
+                    // 当 listenSocket 也没有事件时，也会进入这块，要在这里判断一下，避免两次将 listenSocket 加入集合
                     //
                     if (socket != acceptSocket) {
                         FD_SET(socket, &new_to_be_checked_fds);
