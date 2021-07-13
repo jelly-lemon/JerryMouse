@@ -210,6 +210,17 @@ public:
             handleGet();
         }
     }
+
+    static void HandleRequest(SOCKET client) {
+        HttpResponse httpResponse(client);
+        httpResponse.handleRequest();
+//        try {
+//            HttpResponse httpResponse(client);
+//            httpResponse.handleRequest();
+//        } catch (exception &e) {
+//            err(" handleRequest failed, Err: %s\n", getErrorInfo().c_str());
+//        }
+    }
 };
 
 

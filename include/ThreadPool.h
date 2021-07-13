@@ -57,8 +57,7 @@ public:
                 function<void()> task = pThreadPool->getTask(pThreadPool->isBlockingWaitTask);
                 task();
             } catch(exception &e) {
-                info(" worker finished, info: %s\n", e.what());
-                break;
+                info(" task error, Err: %s\n", e.what());
             }
         }
 

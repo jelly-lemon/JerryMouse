@@ -123,8 +123,8 @@ SOCKET createListenSocket(int port = 80, string ip = "", int backlog = 65535) {
         safeExit(-1);
     }
 #endif
-    info(" listenSocket: %d\n", acceptSocket);
-    info(" server listen at %s\n", getAcceptIPPort(acceptSocket).c_str());
+    info(" listenSocket: %d\n", listenSocket);
+    info(" server listen at %s\n", getAcceptIPPort(listenSocket).c_str());
 
 
     //
@@ -136,7 +136,7 @@ SOCKET createListenSocket(int port = 80, string ip = "", int backlog = 65535) {
     // backlog 指全连接队列大小
     //
     //-------------------------------------------------------------
-    listen(acceptSocket, backlog);
+    listen(listenSocket, backlog);
     info(" backlog is %d\n", backlog)
     if (port == 80) {
         info(" now, you can visit http://%s to browse homepage.\n", ip.c_str());
@@ -144,7 +144,7 @@ SOCKET createListenSocket(int port = 80, string ip = "", int backlog = 65535) {
         info(" now, you can visit http://%s:%d to browse homepage.\n", ip.c_str(), port);
     }
 
-    return acceptSocket;
+    return listenSocket;
 }
 
 
@@ -164,7 +164,7 @@ int closeSocket(SOCKET clientSocket) {
         info("[socket %s] we closed socket %d.\n", strIpPort.c_str(), clientSocket);
     }
 #else
-    int n = close(listenSocket);
+    int n = close(clientSocket);
 #endif
 
     return n;

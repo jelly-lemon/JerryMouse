@@ -50,8 +50,6 @@ public:
     static const string rootDir;  // 资源所在根目录
 
 
-
-
     /**
      * 获取当前连接数量
      */

@@ -25,7 +25,7 @@ using namespace std;
  */
 class HttpServer_v3 : public HttpServer{
 private:
-    ThreadPool<pair<SOCKET, long>> threadPool;  // 线程池对象
+    ThreadPool threadPool;  // 线程池对象
 
     unordered_map<SOCKET, long> acceptedTime;
 
@@ -38,7 +38,16 @@ public:
 
 
 private:
+
+
     void handleAccept() override {
+        //
+        // 设置监听 socket 为非阻塞
+        //
+        if (setNonBlocking(listenSocket) == -1) {
+            safeExit(-1);
+        }
+
         //
         // 创建 epoll
         //
@@ -65,6 +74,8 @@ private:
             if (nfds == -1) {
                 err(" epoll_wait failed, Err:%s\n", getErrorInfo().c_str());
                 continue;
+            } else {
+                debug(" epoll_wait succeed, nfds: %d\n", nfds);
             }
 
             //
@@ -80,28 +91,30 @@ private:
                         //
                         sockaddr clientAddr;
                         socklen_t addrLen = sizeof(sockaddr);
-                        int connSocket = accept(listenSocket, &clientAddr, &addrLen);
-                        if (connSocket == -1) {
+                        int client = accept(listenSocket, &clientAddr, &addrLen);
+                        if (client == -1) {
                             if (errno != EAGAIN && errno != ECONNABORTED && errno != EPROTO && errno != EINTR) {
                                 err(" accept failed, Err: %s\n", getErrorInfo().c_str());
                             }
                             break;
                         } else {
-                            acceptedTime[listenSocket] = getTickCount();
-                        };
+                            info(" new socket: %d\n", client);
+                            acceptedTime[client] = getTickCount();
+                        }
+//                        if (setNonBlocking(client) == -1) {
+//                            continue;
+//                        }
 
                         //
                         // 将新 socket 加入到监听列表中
                         //
-                        if (setNonBlocking(connSocket) == -1) {
-                            err(" setNonBlocking failed, Err:%s\n", getErrorInfo().c_str());
-                            continue;
-                        }
                         ev.events = EPOLLIN | EPOLLET;
-                        ev.data.fd = connSocket;
-                        if (epoll_ctl(epfd, EPOLL_CTL_ADD, connSocket, &ev) == -1) {
+                        ev.data.fd = client;
+                        if (epoll_ctl(epfd, EPOLL_CTL_ADD, client, &ev) == -1) {
                             err(" epoll_ctl: add failed, Err:%s\n", getErrorInfo().c_str());
                             safeExit(-1);
+                        } else {
+                            debug(" epoll_ctl succeed\n");
                         }
                     }
                 } else if (events[i].events & EPOLLIN){
@@ -109,7 +122,7 @@ private:
                     // 将 socket 放入任务队列中
                     //
                     SOCKET clientSocket = events[i].data.fd;
-                    bool rt = threadPool.submitTask(make_pair(clientSocket, acceptedTime[events[i].data.fd]));
+                    bool rt = threadPool.submitTask(bind(HttpResponse::HandleRequest, clientSocket));
                     if (!rt) {
                         err("submit failed, TaskQueue is full, close socket.\n");
                         SOCKET connSocket = events[i].data.fd;
