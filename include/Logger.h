@@ -1,10 +1,3 @@
-/**
- * 日志类
- *
- * 主要功能：
- * 输出日志到控制台和日志文件
- */
-
 #pragma once
 
 #ifdef WIN32
@@ -25,16 +18,25 @@
 #include "OS_util.cpp"
 
 
-
-
-
-
 using namespace std;
 
+/**
+ * 日志等级
+ */
+enum LogLevel {
+    DEBUG, INFO
+};
+
+
+/**
+ * 日志类
+ */
 class Logger {
 private:
-    thread *pWriteThread;
-    void startWriteFileThread();
+    thread *pLoggerThread;
+    void startLoggerThreadLo();
+
+    static LogLevel logLevel;
 
 public:
     static mutex printLock;
@@ -51,14 +53,14 @@ public:
      * @param isAsyncLog 异步日志
      */
     explicit Logger(bool isAsyncLog = true, bool isPrintInfo = true, bool isWriteToFile = true, bool isCleanOldLogFile = true):
-            pWriteThread(NULL)
+            pLoggerThread(NULL)
     {
         Logger::isWriteToFile = isWriteToFile;
         Logger::isPrintInfo = isPrintInfo;
         Logger::isAsyncLog = isAsyncLog;
 
         if (isAsyncLog) {
-            startWriteFileThread();
+            startLoggerThreadLo();
         }
 
         if (isCleanOldLogFile) {
@@ -66,6 +68,12 @@ public:
         }
     }
 
+    /**
+     * 设定日志等级
+     */
+    static void setLogLevel(LogLevel logLevel) {
+        Logger::logLevel = logLevel;
+    }
 
 
     static void print(ostream *pOut, string msg);
@@ -99,6 +107,7 @@ bool Logger::isPrintInfo = true;
 bool Logger::isAsyncLog = false;    // 默认同步打印
 mutex Logger::printLock;
 SyncQueue<string> Logger::msgQueue;
+LogLevel Logger::logLevel = DEBUG;
 
 /**
  * Info 打印
@@ -136,9 +145,9 @@ SyncQueue<string> Logger::msgQueue;
 /**
  * 启动写文件线程
  */
-void Logger::startWriteFileThread() {
-    pWriteThread = new thread(t_write);
-    pWriteThread->detach();
+void Logger::startLoggerThreadLo() {
+    pLoggerThread = new thread(t_write);
+    pLoggerThread->detach();
 }
 
 /**
@@ -238,14 +247,12 @@ string Logger::getFormattedStrCore(const char *format, va_list arg) {
     // --------------------------------------------------
     // 【易错点】要用 vsnprintf，不能用 snprintf
     // 带 v 的都是使用变量 va_list 传递变参
-    // 如果格式化后的字符串长度超过 10，则会被截断，并返回 -1，并且位置 10 会被置为 '\0'
-    // 减 4 表示给省略号和\0的位置，即:"...\0"的位置
     // --------------------------------------------------
-    // FIXME 如果参数个数对不上通配符，这里会出错，并且没有任何提示
+    // FIXME 如果参数个数对不上通配符个数，这里会出错，并且没有任何提示，不会抛出异常，程序直接崩溃
     done = vsnprintf(msg, len - 1, format, arg);
 
     //
-    // 字符串长度超过 len-4 时，最后面省略号表示
+    // 字符串长度超过 len-4 时，最后面省略号表示，-1 表示已超过数组长度
     //
     if (done == -1 || done > 1000) {
         msg[len - 5] = '.';

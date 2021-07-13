@@ -18,7 +18,7 @@ private:
         while (true) {
             sockaddr connAddr = {};
             int addrLen = sizeof(connAddr);
-            SOCKET clientSocket = accept(clientSocket, &connAddr, &addrLen);
+            SOCKET clientSocket = accept(listenSocket, &connAddr, &addrLen);
             if (clientSocket == SOCKET_ERROR) {
                 err(" accept failed, Err: %s\n", getErrorInfo().c_str());
             } else {

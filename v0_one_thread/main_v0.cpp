@@ -5,13 +5,11 @@ using namespace std;
 
 const string HttpServer::rootDir = "../web_root";
 
-
 int main() {
     Logger logger(true, true, true, true);
 
     int port = 80;
     string ip = "127.0.0.1";
-
 
     //
     // 注册信号处理
