@@ -40,7 +40,7 @@ void HttpServer_v1::startServer() {
         //
         SOCKET newConnSocket = accept(listenSocket, &connAddr, &addrLen);
         info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
-        long acceptedTime = getTickCount();
+        long acceptedTime = getCurrentTime();
 //        thread t(worker_main, newConnSocket, acceptedTime, this);
 //        t.detach();
     }

@@ -2,12 +2,8 @@
 #pragma once
 
 #include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <asm-generic/ioctls.h>
 #include <sys/epoll.h>
 #include <string>
-#include <fcntl.h>
 #include <unordered_map>
 #include "ThreadPool.h"
 #include "util.h"
@@ -29,18 +25,109 @@ private:
 
     unordered_map<SOCKET, long> acceptedTime;
 
+    int epfd;
+
+    EPOLL_EVENTS triggerMode;
+
+
 public:
     explicit HttpServer_v3(int port = 80, string ip = "127.0.0.1", int backlog = 65535) :
     threadPool(0),
     HttpServer(port, ip, backlog) {
-
+        triggerMode = EPOLLET;
     }
 
+    /**
+     * 设置触发模式
+     *
+     * @param triggerMode
+     */
+    void setTriggerMode(EPOLL_EVENTS triggerMode) {
+        this->triggerMode = triggerMode;
+        info(" set triggerMode: d%\n", triggerMode);
+    }
 
 private:
 
+    /**
+     * 移除监听事件列表
+     */
+    void removeEvent(SOCKET client, uint32_t events = EPOLLIN | EPOLLET) {
+        epoll_event ev = {};
+        ev.events = events;
+        ev.data.fd = client;
 
-    void handleAccept() override {
+        if (epoll_ctl(epfd, EPOLL_CTL_DEL, client, &ev) != -1) {
+            debug(" removeEvent socket %d failed, Err: %s\n", client, getErrorInfo().c_str());
+        } else {
+            debug(" removeEvent socket %d succeed\n", client);
+        }
+    }
+
+    void handleWrite(SOCKET client) {
+
+    }
+
+    /**
+     * 处理可读事件
+     */
+    void handleRead(SOCKET client) {
+        //
+        // 将 socket 放入任务队列中
+        //
+        function<void()> taskFinishedCallback = bind(&HttpServer_v3::removeEvent, this, client, EPOLLIN | triggerMode);
+        function<void()> newTask = bind(HttpResponse::HandleRequest, client, acceptedTime[client], taskFinishedCallback);
+        bool rt = threadPool.submitTask(newTask);
+        if (!rt) {
+            err("submit failed, TaskQueue is full, close socket.\n");
+            closeSocket(client);
+        }
+    }
+
+    void handleAccept() {
+        while (true) {
+            //
+            // 获取连接 socket
+            //
+            sockaddr clientAddr;
+            socklen_t addrLen = sizeof(sockaddr);
+            int client = accept(listenSocket, &clientAddr, &addrLen);
+            if (client == -1) {
+                //
+                // EAGAIN:
+                // ECONNABORTED:
+                // EPROTO:
+                // EINTR:
+                //
+                if (errno != EAGAIN && errno != ECONNABORTED && errno != EPROTO && errno != EINTR) {
+                    err(" accept failed, Err: %s\n", getErrorInfo().c_str());
+                }
+                break;
+            } else {
+                info(" new socket: %d\n", client);
+                acceptedTime[client] = getCurrentTime();
+            }
+
+
+            //
+            // 将新 socket 加入到监听列表中
+            //
+            // EPOLLIN: 可读事件
+            // EPOLLET: 边缘触发
+            //
+            epoll_event ev = {};
+            ev.events = EPOLLIN | triggerMode;
+            ev.data.fd = client;
+            if (epoll_ctl(epfd, EPOLL_CTL_ADD, client, &ev) == -1) {
+                err(" epoll_ctl add socket %d failed, Err:%s\n", client, getErrorInfo().c_str());
+                safeExit(-1);
+            } else {
+                debug(" epoll_ctl add socket %d succeed\n", client);
+            }
+        }
+    }
+
+    void run() override {
         //
         // 设置监听 socket 为非阻塞
         //
@@ -51,7 +138,7 @@ private:
         //
         // 创建 epoll
         //
-        int epfd = epoll_create(MAX_EVENTS);
+        epfd = epoll_create(MAX_EVENTS);
         if (epfd == -1) {
             err(" epoll_create failed, Err:%s\n", getErrorInfo().c_str());
             safeExit(-1);
@@ -66,7 +153,7 @@ private:
         epoll_ctl(epfd, EPOLL_CTL_ADD, listenSocket, &ev);
 
         //
-        // 监听客户端连接
+        // 等待事件
         //
         epoll_event events[MAX_EVENTS];
         while (1) {
@@ -83,51 +170,23 @@ private:
             //
             for (int i = 0; i < nfds; i++) {
                 int fd = events[i].data.fd;
-                // 如果是监听 socket
+                //
+                // 如果有新连接
+                //
                 if (fd == listenSocket) {
-                    while (true) {
-                        //
-                        // 获取连接 socket
-                        //
-                        sockaddr clientAddr;
-                        socklen_t addrLen = sizeof(sockaddr);
-                        int client = accept(listenSocket, &clientAddr, &addrLen);
-                        if (client == -1) {
-                            if (errno != EAGAIN && errno != ECONNABORTED && errno != EPROTO && errno != EINTR) {
-                                err(" accept failed, Err: %s\n", getErrorInfo().c_str());
-                            }
-                            break;
-                        } else {
-                            info(" new socket: %d\n", client);
-                            acceptedTime[client] = getTickCount();
-                        }
-//                        if (setNonBlocking(client) == -1) {
-//                            continue;
-//                        }
-
-                        //
-                        // 将新 socket 加入到监听列表中
-                        //
-                        ev.events = EPOLLIN | EPOLLET;
-                        ev.data.fd = client;
-                        if (epoll_ctl(epfd, EPOLL_CTL_ADD, client, &ev) == -1) {
-                            err(" epoll_ctl: add failed, Err:%s\n", getErrorInfo().c_str());
-                            safeExit(-1);
-                        } else {
-                            debug(" epoll_ctl succeed\n");
-                        }
-                    }
+                    handleAccept();
                 } else if (events[i].events & EPOLLIN){
                     //
-                    // 将 socket 放入任务队列中
+                    // 如果是可读事件
                     //
-                    SOCKET clientSocket = events[i].data.fd;
-                    bool rt = threadPool.submitTask(bind(HttpResponse::HandleRequest, clientSocket));
-                    if (!rt) {
-                        err("submit failed, TaskQueue is full, close socket.\n");
-                        SOCKET connSocket = events[i].data.fd;
-                        closeSocket(connSocket);
-                    }
+                    handleRead(events[i].data.fd);
+                } else if (events[i].events & EPOLLOUT) {
+                    //
+                    // 可写事件
+                    //
+                    handleWrite(events[i].data.fd);
+                } else {
+                    debug(" unknown socket %d event: %d", events[i].data.fd, events[i].events);
                 }
             }
         }

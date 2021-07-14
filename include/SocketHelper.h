@@ -158,14 +158,15 @@ int closeSocket(SOCKET clientSocket) {
     string strIpPort = getSocketIPPort(clientSocket);
 #ifdef WIN32
     int n = closesocket(clientSocket);
+#else
+    int n = close(clientSocket);
+
+#endif
     if (n == SOCKET_ERROR) {
         err("[socket %s] close socket %d err, Err: %s\n", strIpPort.c_str(), clientSocket, getErrorInfo().c_str());
     } else {
         info("[socket %s] we closed socket %d.\n", strIpPort.c_str(), clientSocket);
     }
-#else
-    int n = close(clientSocket);
-#endif
 
     return n;
 }

@@ -8,12 +8,14 @@
 #include <unistd.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/times.h>
 #endif
 
 #include <sstream>
 #include <cstring>
 #include <fcntl.h>
 #include <csignal>
+
 #include "OS_util.cpp"
 #include "Logger.h"
 
@@ -228,9 +230,9 @@ string getSocketIPPort(SOCKET connSocket) {
 }
 
 /**
- * 获取 CPU tick count
+ * 获取当前时间
  */
-long getTickCount() {
+long getCurrentTime() {
 #ifdef WIN32
     static BOOL init = FALSE;
     static BOOL hires = FALSE;
@@ -254,7 +256,8 @@ long getTickCount() {
 
     return tickCount;
 #else
-
+    long tickCount = (long)times( NULL);
+    return tickCount;
 #endif
     return 0;
 }
@@ -266,12 +269,14 @@ long getTickCount() {
  */
 long getTimeDiff(long startTime, long endTime = 0) {
     if (endTime == 0) {
-        endTime = getTickCount();
+        endTime = getCurrentTime();
     }
+
     long timeDiff = endTime - startTime;
     if (timeDiff < 0) {
         timeDiff = 0xFFFFFFFF - startTime + endTime + 1;
     }
+
 
     return timeDiff;
 }

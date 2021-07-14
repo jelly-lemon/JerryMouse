@@ -211,15 +211,18 @@ public:
         }
     }
 
-    static void HandleRequest(SOCKET client) {
-        HttpResponse httpResponse(client);
-        httpResponse.handleRequest();
-//        try {
-//            HttpResponse httpResponse(client);
-//            httpResponse.handleRequest();
-//        } catch (exception &e) {
-//            err(" handleRequest failed, Err: %s\n", getErrorInfo().c_str());
-//        }
+    static void HandleRequest(SOCKET client, long acceptedTime, function<void()> callback = NULL) {
+        try {
+            info("[socket %s] socket %d wait time: %d ms\n", getSocketIPPort(client).c_str(), client, getTimeDiff(acceptedTime));
+            HttpResponse httpResponse(client);
+            httpResponse.handleRequest();
+        } catch (exception &e) {
+            err(" HandleRequest failed, Err: %s\n", e.what());
+        }
+        closeSocket(client);
+        if (callback != NULL) {
+            callback();
+        }
     }
 };
 

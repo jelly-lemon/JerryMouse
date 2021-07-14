@@ -27,9 +27,9 @@ private:
     int backlog;                    // 全连接队列容量
 
     /**
-     * 处理 accept
+     * 处理各种事件
      */
-    virtual void handleAccept() = 0;
+    virtual void run() = 0;
 
 protected:
     SOCKET listenSocket;            // 监听 socket
@@ -108,7 +108,7 @@ public:
         // 处理连接请求
         //
         info(" waiting for connection...\n");
-        handleAccept();
+        run();
     }
 };
 

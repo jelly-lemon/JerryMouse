@@ -151,7 +151,7 @@ void WebServer_v2_1::startServer(int port, string ip, int backlog) {
                             //
                             // 将新 socket 放入下次 select 集合
                             //
-                            acceptedTime[newConnSocket] = getTickCount();
+                            acceptedTime[newConnSocket] = getCurrentTime();
                             addConnectionNumber();
                             info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
                             FD_SET(newConnSocket, &new_to_be_checked_fds);

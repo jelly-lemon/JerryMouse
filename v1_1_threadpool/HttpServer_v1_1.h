@@ -18,7 +18,7 @@ private:
 
 
 
-    void handleAccept() override {
+    void run() override {
         if (pThreadPool == NULL) {
             err(" please setThreadPool\n");
             safeExit(-1);
@@ -32,7 +32,7 @@ private:
             int addrLen = sizeof(connAddr);
             SOCKET newConnSocket = accept(listenSocket, &connAddr, &addrLen);
             info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
-            long acceptedTime = getTickCount();
+            long acceptedTime = getCurrentTime();
             //
             // 提交任务
             //
