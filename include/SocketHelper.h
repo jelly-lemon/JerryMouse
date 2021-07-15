@@ -89,12 +89,12 @@ SOCKET createListenSocket(int port = 80, string ip = "", int backlog = 65535) {
     addrSrv.sin_family = AF_INET;
     // TODO 检查端口合法性
     addrSrv.sin_port = htons(port);
-    SOCKET acceptSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
+    SOCKET listenSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
 
     //
     // 绑定监听端口
     //
-    int n = bind(acceptSocket, (SOCKADDR * ) & addrSrv, sizeof(SOCKADDR));
+    int n = bind(listenSocket, (SOCKADDR * ) & addrSrv, sizeof(SOCKADDR));
     if (n == SOCKET_ERROR) {
         err(" bind port %d failed, Err:%s\n", port, getErrorInfo().c_str())
         safeExit(-1);

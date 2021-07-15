@@ -17,7 +17,7 @@ private:
     int currentWorkerNumber;                // 当前 worker 数量
     mutex mutexWorkerNumber;                // currentWorkerNumber 互斥量
     SyncQueue<function<void()>> taskQueue;  // 任务队列
-    bool isBlockingWaitTask;    // 阻塞等待
+    bool isBlockingWaitTask;                // 是否阻塞等待
 
 public:
     /**
@@ -26,7 +26,7 @@ public:
     explicit ThreadPool(int poolSize = 0, bool isBlockingWaitTask = true):
     poolSize(poolSize),currentWorkerNumber(0), isBlockingWaitTask(isBlockingWaitTask){
         if (poolSize == 0) {
-            this->poolSize = getCPULogicCoresNumber() + 1;
+            this->poolSize = 2*getCPULogicCoresNumber() + 1;
         }
         info(" new ThreadPool, poolSize: %d\n", this->poolSize);
         createThread();

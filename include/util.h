@@ -188,14 +188,13 @@ void sigHandler(int signal){
  */
 int getCPULogicCoresNumber() {
     int n = 0;
-#ifdef linux
-
-#else
+#ifdef WIN32
     SYSTEM_INFO sysInfo;
     GetSystemInfo(&sysInfo);
     n = sysInfo.dwNumberOfProcessors;
-#endif
+#else
 
+#endif
     return n;
 }
 

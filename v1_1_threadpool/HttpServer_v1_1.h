@@ -31,31 +31,28 @@ private:
             sockaddr connAddr = {};
             int addrLen = sizeof(connAddr);
             SOCKET newConnSocket = accept(listenSocket, &connAddr, &addrLen);
-            info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
-            long acceptedTime = getCurrentTime();
-            //
-            // 提交任务
-            //
-            pThreadPool->submitTask(bind(task, newConnSocket, acceptedTime));
+            if (newConnSocket != SOCKET_ERROR) {
+                info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
+                addConnectionNumber();
+                addTotalRequest();
+                long acceptedTime = getCurrentTime();
+                //
+                // 提交任务
+                //
+                function<void()> onTaskFinishedCallback = bind(&HttpServer::subConnectionNumber, this);
+                function<void()> task = bind(HttpResponse::HandleRequest, newConnSocket, acceptedTime, onTaskFinishedCallback);
+                pThreadPool->submitTask(task);
+            } else {
+                err(" accept failed, Err: %s\n", getErrorInfo().c_str());
+            }
+
         }
     }
-
-    static void task(SOCKET clientSocket, long acceptedTime) {
-        long waitTime = getTimeDiff(acceptedTime);
-        info("[socket %s] socket %d wait time: %d ms\n", getSocketIPPort(clientSocket).c_str(), clientSocket, waitTime);
-        try {
-            HttpResponse httpResponse(clientSocket);
-            httpResponse.handleRequest();
-        } catch (exception &e) {
-            err(" task() failed, Err: %s\n", e.what());
-        }
-    }
-
 
 
 public:
     explicit HttpServer_v1_1(int port = 80, string ip = "127.0.0.1", int backlog = 65535) :
-            HttpServer(port, ip, backlog) {
+            HttpServer(port, ip, backlog), pThreadPool(NULL) {
 
     }
 

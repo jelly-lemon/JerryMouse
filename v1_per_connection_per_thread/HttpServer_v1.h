@@ -12,6 +12,21 @@ private:
     mutex mutexWorkerNumber;
     int currentWorkerNumber;
 
+    void run() override {
+        while (true) {
+            sockaddr connAddr = {};
+            int addrLen = sizeof(connAddr);
+            //
+            // 接收连接，启动处理线程
+            //
+            SOCKET newConnSocket = accept(listenSocket, &connAddr, &addrLen);
+            info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
+            long acceptedTime = getCurrentTime();
+            thread t(worker_main, newConnSocket, acceptedTime, this);
+            t.detach();
+        }
+    }
+
 public:
     HttpServer_v1(int port = 80, string ip = "127.0.0.1", int backlog = 65535) :
     currentWorkerNumber(0), HttpServer(port, ip, backlog) {
@@ -19,7 +34,6 @@ public:
     }
 
 
-    void startServer();
 
     static void* worker_main(SOCKET connSocket, long acceptedTime, HttpServer_v1 *pHttpServer);
 
@@ -29,22 +43,6 @@ public:
 };
 
 
-void HttpServer_v1::startServer() {
-    HttpServer::startServer();
-
-    while (true) {
-        sockaddr connAddr = {};
-        int addrLen = sizeof(connAddr);
-        //
-        // 接收连接，启动处理线程
-        //
-        SOCKET newConnSocket = accept(listenSocket, &connAddr, &addrLen);
-        info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
-        long acceptedTime = getCurrentTime();
-//        thread t(worker_main, newConnSocket, acceptedTime, this);
-//        t.detach();
-    }
-}
 
 /**
  * 子线程函数

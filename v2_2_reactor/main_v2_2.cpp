@@ -7,7 +7,7 @@ using namespace std;
 const string HttpServer::rootDir = "../web_root";
 
 int main() {
-    Logger logger(true, false, true, true);  // 创建日志对象
+    Logger logger(true, true, true, true);  // 创建日志对象
 
     int port = 80;
     string ip = "10.66.38.27";

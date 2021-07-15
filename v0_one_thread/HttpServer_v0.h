@@ -23,15 +23,8 @@ private:
                 err(" accept failed, Err: %s\n", getErrorInfo().c_str());
             } else {
                 info("[socket %s] new socket %d\n", getSocketIPPort(clientSocket).c_str(), clientSocket);
+                HttpResponse::HandleRequest(clientSocket, getCurrentTime());
             }
-            try {
-                HttpResponse response(clientSocket);
-                response.handleRequest();
-            } catch(exception &e) {
-                err(" handleRequest failed, Err: %s\n", getErrorInfo().c_str());
-            }
-
-            closeSocket(clientSocket);
         }
     }
 };

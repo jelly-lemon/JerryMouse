@@ -86,27 +86,30 @@ Webbench 1.5
 
 用于测试的网页：http://10.66.38.27/home.html （10.66.38.27 是我的局域网 IP），截图如下：
 
-- ![avatar](/home/picture/1.png)
-
-
+![](https://github.com/jelly-lemon/JerryMouse/blob/master/img/test_page.png?raw=true)
 
 整个测试过程为：首先，启动 httpd.exe；其次，打开虚拟机，运行 Centos7；最后，在 Centos7 中运行 Webbench，对 httpd.exe 进行压力测试。
 
 测试结果：
 
 ```shell
-[root@VM_1 webbench-1.5]# ./webbench -c250 -t5 http://10.66.38.27/home.html
+[root@VM_1 WebBench]# ./webbench -c250 -t5 http://10.66.38.27/home.html
 Webbench - Simple Web Benchmark 1.5
 Copyright (c) Radim Kolar 1997-2004, GPL Open Source Software.
 
-Benchmarking: GET http://10.66.38.27/home.html
-250 clients, running 5 sec.
+Request:
+GET /home.html HTTP/1.0
+User-Agent: WebBench 1.5
+Host: 10.66.38.27
 
-Speed=78912 pages/min, 1893888 bytes/sec.
-Requests: 6576 susceed, 0 failed.
+
+Runing info: 250 clients, running 5 sec.
+
+Speed=38724 pages/min, 929376 bytes/sec.
+Requests: 3227 susceed, 0 failed.
 ```
 
-其中 -c250 -t5 表示模拟 250 个客户端在 5s 内反复访问指定网页，可以理解成 250 个人分别用自己的电脑在浏览器中疯狂按 F5 刷新网页。（当我设置 300 个及以上客户端数量时，httpd.exe 就顶不住了，压测会出现 failed。）具体过程为，Webbench 保证同时有 250 个和服务端相连的 Http 连接。一旦一个 Http 连接完成，Webbench 立即又创建新的一个 Http 连接进行请求。若 250 个 Http 连接都没完成，那 Webbench 就一直等待。还需要注意的是，Webbench 创建一个 Http 连接后，只会 GET 请求一次，换言之，不会复用 HTTP 连接，每一次请求都会单独创建一个 Http 连接。
+其中 -c250 -t5 表示模拟 250 个客户端在 5s 内反复访问指定网页，可以理解成 250 个人分别用自己的电脑在浏览器中疯狂按 F5 刷新网页。（当我设置 300 个及以上客户端数量时，httpd.exe 就顶不住了，压测会出现 failed。）具体过程为，Webbench 保证同时有 250 个和服务端相连的 Http 连接。一旦一个 Http 连接完成，Webbench 立即又创建新的一个 Http 连接进行请求。若 250 个 Http 连接都没完成，那 Webbench 就一直等待。还需要注意的是，Webbench 创建一个 Http 连接后，只会 GET 请求一次，换言之，不会复用 Http 连接，每一次请求都会单独创建一个 Http 连接。
 
 
 
@@ -119,16 +122,20 @@ Webbench 对于一次 request 算 susceed 的情况：
  一次 request 算 failed 的情况：
 
 - Webbench 创建 socket 失败 ---> failed
+
 - Webbench 创建 socket ---> write 失败 ---> failed
+
 - Webbench 创建 socket ---> write ---> 关闭 socket 写操作失败 ---> failed
+
 - Webbench 创建 socket ---> write ---> 关闭 socket 写操作 ---> read 失败（服务端没有响应数据或者没有关闭 socket，导致 read 阻塞，最后超时） ---> failed
+
 - Webbench 创建 socket ---> write ---> 关闭 socket 写操作 ---> read ---> close socket 失败 ---> failed
 
-
+  
 
 计算 QPS：
 
-QPS(httpd.exe) = 6576 succeed / 5 sec = 1315，即 QPS 约为 1315。
+QPS(httpd.exe) = 3227 succeed / 5 sec = 645，即 QPS 约为 645。
 
 
 
@@ -136,41 +143,105 @@ QPS(httpd.exe) = 6576 succeed / 5 sec = 1315，即 QPS 约为 1315。
 
 测试前的配置：关闭控制台输出、使用 Release 编译
 
+
+
 ## v0_one_thread（单线程）
 
 (-c 为 250 时会出现 failed)
 
 ```shell
-[root@VM_1 webbench-1.5]# ./webbench -c200 -t5 http://10.66.38.27/home.html
+[root@VM_1 WebBench]# ./webbench -c200 -t5 http://10.66.38.27/home.html
 Webbench - Simple Web Benchmark 1.5
 Copyright (c) Radim Kolar 1997-2004, GPL Open Source Software.
 
-Benchmarking: GET http://10.66.38.27/home.html
-200 clients, running 5 sec.
+Request:
+GET /home.html HTTP/1.0
+User-Agent: WebBench 1.5
+Host: 10.66.38.27
 
-Speed=50424 pages/min, 1070669 bytes/sec.
-Requests: 4202 susceed, 0 failed.
+
+Runing info: 200 clients, running 5 sec.
+
+Speed=24708 pages/min, 524378 bytes/sec.
+Requests: 2059 susceed, 0 failed.
 ```
 
-QPS = 4202 / 5 = 840
+QPS = 2059 / 5 = 411
 
 
 
 ## v1_per_connection_per_thread（一个连接开一个线程）
 
+(-c 为 250 时会出现 failed)
+
 ```shell
-[root@VM_1 webbench-1.5]# ./webbench -c250 -t5 http://10.66.38.27/home.html
+[root@VM_1 WebBench]# ./webbench -c200 -t5 http://10.66.38.27/home.html
 Webbench - Simple Web Benchmark 1.5
 Copyright (c) Radim Kolar 1997-2004, GPL Open Source Software.
 
-Benchmarking: GET http://10.66.38.27/home.html
-250 clients, running 5 sec.
+Request:
+GET /home.html HTTP/1.0
+User-Agent: WebBench 1.5
+Host: 10.66.38.27
 
-Speed=53880 pages/min, 1144052 bytes/sec.
-Requests: 4490 susceed, 0 failed.
+
+Runing info: 200 clients, running 5 sec.
+
+Speed=29364 pages/min, 622986 bytes/sec.
+Requests: 2447 susceed, 0 failed.
 ```
 
-QPS = 4490 / 5 = 898
+QPS = 2447 / 5 = 489
+
+
+
+## v1_1_threadpool（线程池）
+
+```shell
+[root@VM_1 WebBench]# ./webbench -c250 -t5 http://10.66.38.27/home.html
+Webbench - Simple Web Benchmark 1.5
+Copyright (c) Radim Kolar 1997-2004, GPL Open Source Software.
+
+Request:
+GET /home.html HTTP/1.0
+User-Agent: WebBench 1.5
+Host: 10.66.38.27
+
+
+Runing info: 250 clients, running 5 sec.
+
+Speed=25260 pages/min, 536099 bytes/sec.
+Requests: 2105 susceed, 0 failed.
+```
+
+QPS = 2105 / 5 = 421
+
+
+
+## v2_select_threadpool
+
+```shell
+[root@VM_1 WebBench]# ./webbench -c200 -t5 http://10.66.38.27/home.html
+Webbench - Simple Web Benchmark 1.5
+Copyright (c) Radim Kolar 1997-2004, GPL Open Source Software.
+
+Request:
+GET /home.html HTTP/1.0
+User-Agent: WebBench 1.5
+Host: 10.66.38.27
+
+
+Runing info: 200 clients, running 5 sec.
+
+Speed=24168 pages/min, 512912 bytes/sec.
+Requests: 2014 susceed, 0 failed.
+```
+
+QPS = 2014 / 5 = 402
+
+## v2_1_pool_threadpool
+
+
 
 
 
@@ -192,6 +263,26 @@ QPS = 3552 / 5 = 710
 
 
 
+## v3_epoll_threadpool
+
+
+
+## v4_IOCP_threadpool
+
+
+
+## v4_1_acceptEx_IOCP_threadpool
+
+
+
+## v4_2_proactor
+
+
+
+
+
+
+
 
 
 # TODO
@@ -209,84 +300,3 @@ QPS = 3552 / 5 = 710
 方法如下：
 
 我将及时做出回复。
-
-# 遇到的问题
-
-Q: TCP 三次握手完成后，客户端迟迟不发送请求，那服务端保持连接多久呢？如果立即释放连接，说不定客户端请求已经在路上了。如果不释放，服务端又一直干等着，就会浪费内存资源。
-
-A:
-
-
-
-Q: 类文件相互 include?
-
-A: 这种类依赖关系是不好的，应避免这种设计。正确的类依赖关系应该是像一颗树那样，具有层次关系。
-
-
-
-Q: 多线程环境下，控制台打印混乱，输出被截断？
-
-A: 加一个互斥锁。但是，可能先 printf 和后 printf 同时阻塞，但后 print 的得到锁，然后输出，导致次序混乱。
-
-可以开一个线程，把打印内容放到队列里面。但是，遇到异常时最后一条内容还没打印程序就退出了。
-
-自己再写一个安全退出函数，判断队列是否为空，为空才退出，否则等待。
-
-
-
-Q: 经常忘记 delete，导致内存泄露？
-
-A: 
-
-
-
-Q: exit 导致最后一条日志没有输出？
-
-A: exit 太快，要等待日志写入完成。可以判断日志队列是否为空，为空才退出，否则等待日志线程写完。
-
-
-
-Q: 多线程环境很难调试？
-
-A:
-
-
-
-Q：如何获取实际 backlog 的大小？
-
-A：无法获取
-
-
-
-Q: 队列日志，读一条消息，就打开、关闭文件，要是有大量日志，会不会造成写入缓慢？
-
-A: 
-
-
-
-Q: 类 B 回调类 A 的成员函数？
-
-A:
-
-
-
-Q: 在大量短连接且建立连接就立即发送数据的情况下，IO 多路复用对并发处理能力有帮助吗？
-
-A: 
-
-
-
-Q: 当服务端空闲时，把线程挂起还是销毁？空闲时，线程池挂起还是销毁？
-
-A:
-
-Q: 程序当中有没有办法判断 TCP 半连接和全连接队列的大小呢？
-
-A: 没有办法。
-
-Q: 如何获取任务执行完毕后的返回值？也就是异步执行返回值？
-
-
-Q: Webbench 压测为 0？
-
-A: 服务端主动关闭 socket 了才算一次。

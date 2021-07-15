@@ -3,10 +3,11 @@
 #include <map>
 #include <utility>
 #include <map>
-#include <SocketHelper.h>
+#include <functional>
+#include "SocketHelper.h"
 #include "HttpRequest.h"
-#include "../CrossPlatform.h"
-#include "../util.h"
+#include "CrossPlatform.h"
+#include "util.h"
 #include "HttpServer.h"
 
 using namespace std;
@@ -211,6 +212,13 @@ public:
         }
     }
 
+    /**
+     * 处理请求
+     *
+     * @param client
+     * @param acceptedTime
+     * @param callback
+     */
     static void HandleRequest(SOCKET client, long acceptedTime, function<void()> callback = NULL) {
         try {
             info("[socket %s] socket %d wait time: %d ms\n", getSocketIPPort(client).c_str(), client, getTimeDiff(acceptedTime));

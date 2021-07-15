@@ -20,16 +20,19 @@ using namespace std;
  */
 class HttpServer {
 private:
-    unsigned int connectionNumber;  // 连接数量
+    unsigned int connectionNumber;  // 目前连接数量
     mutex mutexConnectionNumber;    // 连接数量互斥锁
     int port;                       // 监听端口
     string ip;                      // 监听 IP
     int backlog;                    // 全连接队列容量
+    unsigned int totalRequest;     // 收到的总请求数
 
     /**
      * 处理各种事件
      */
-    virtual void run() = 0;
+    virtual void run() {
+
+    }
 
 protected:
     SOCKET listenSocket;            // 监听 socket
@@ -37,7 +40,7 @@ protected:
 
 public:
     explicit HttpServer(int port = 80, string ip = "127.0.0.1", int backlog = 65535):
-            connectionNumber(0), listenSocket(0), port(port), ip(ip), backlog(backlog) {
+            connectionNumber(0), listenSocket(0), port(port), ip(ip), backlog(backlog), totalRequest(0) {
 #ifdef WIN32
         initWSA();
 #endif
@@ -64,6 +67,14 @@ public:
      */
     SOCKET getAcceptSocket() const {
         return listenSocket;
+    }
+
+    /**
+     * 总连接数加 1
+     */
+    void addTotalRequest() {
+        totalRequest++;
+        info(" addTotalRequest: %d\n", totalRequest);
     }
 
     /**
