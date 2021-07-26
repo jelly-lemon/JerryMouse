@@ -29,13 +29,13 @@ public:
             this->poolSize = 2*getCPULogicCoresNumber() + 1;
         }
         info(" new ThreadPool, poolSize: %d\n", this->poolSize);
-        createThread();
+        startWorker();
     }
 
     /**
      * 创建工作线程
      */
-    void createThread() {
+    void startWorker() {
         int n = poolSize - currentWorkerNumber;
         for (int i = 0; i < n; i++) {
             thread worker(ThreadPool::worker_main, this);

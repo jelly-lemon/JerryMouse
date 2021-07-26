@@ -15,7 +15,7 @@
 #include <thread>
 #include <stdarg.h>
 #include "SyncQueue.h"
-#include "OS_util.cpp"
+#include "OSHelper.cpp"
 
 
 using namespace std;

@@ -86,6 +86,8 @@ Webbench 1.5
 
 用于测试的网页：http://10.66.38.27/home.html （10.66.38.27 是我的局域网 IP），截图如下：
 
+实验假设：所有的 HTTP 请求在建立连接后会立即发送请求数据，不存在连接建立后不发送数据的情况。我们使用 WebBench 来保证这一点。
+
 ![](https://github.com/jelly-lemon/JerryMouse/blob/master/img/test_page.png?raw=true)
 
 整个测试过程为：首先，启动 httpd.exe；其次，打开虚拟机，运行 Centos7；最后，在 Centos7 中运行 Webbench，对 httpd.exe 进行压力测试。
@@ -140,9 +142,7 @@ QPS(httpd.exe) = 3227 succeed / 5 sec = 645，即 QPS 约为 645。
 
 
 ## 测试 JerryMouse
-
-测试前的配置：关闭控制台输出、使用 Release 编译
-
+JerryMouse 对 HTTP 请求的处理：响应完毕后立即关闭连接。
 
 
 ## v0_one_thread（单线程）
@@ -280,14 +280,24 @@ QPS = 3552 / 5 = 710
 
 
 
+# 性能瓶颈分析
+可能存在的性能瓶颈：
 
+- [ ] CPU：CPU 处理速度太慢；
 
+- [ ] 内存：内存有限，无法同时创建过多的资源；虽然有虚拟内存，可以解决内存不足的问题，但是频繁页面置换会花费不少 CPU 资源。
+
+- [ ] 网络：网络传输速度过慢；
+
+- [ ] 频繁地线程切换
 
 
 
 # TODO
 
 - [ ] URL base64 解析
+
+
 
 # 发现 Bug 及优化
 
