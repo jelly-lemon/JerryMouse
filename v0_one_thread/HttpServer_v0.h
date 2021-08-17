@@ -14,16 +14,19 @@ public:
 
 private:
     void run() override {
-
         while (true) {
             sockaddr connAddr = {};
             int addrLen = sizeof(connAddr);
             SOCKET clientSocket = accept(listenSocket, &connAddr, &addrLen);
+            addTotalReceivedRequestNumber();
+            addCurrentConnectionNumber();
             if (clientSocket == SOCKET_ERROR) {
                 err(" accept failed, Err: %s\n", getErrorInfo().c_str());
             } else {
                 info("[socket %s] new socket %d\n", getSocketIPPort(clientSocket).c_str(), clientSocket);
                 HttpResponse::HandleRequest(clientSocket, getCurrentTime());
+                addTotalRespondedRequestNumber();
+                subCurrentConnectionNumber();
             }
         }
     }

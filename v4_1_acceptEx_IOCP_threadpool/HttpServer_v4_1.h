@@ -247,7 +247,7 @@ public:
                 // 关闭连接，服务端响应一个请求后就立即关闭 socket
                 //
                 closeSocket(pIoData->client);
-                pServer->subConnectionNumber();
+                pServer->subCurrentConnectionNumber();
                 delete pIoData;
 
                 SOCKET client = createSocket();

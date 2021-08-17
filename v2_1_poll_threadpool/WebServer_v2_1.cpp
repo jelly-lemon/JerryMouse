@@ -27,7 +27,7 @@ public:
         //
         // 设置任务完成时回调函数
         //
-        function<void()> callback = bind(&HttpServer::subConnectionNumber, this);
+        function<void()> callback = bind(&HttpServer::subCurrentConnectionNumber, this);
         threadPool.setOnTaskFinishedCallback(callback);
     }
 
@@ -152,7 +152,7 @@ void WebServer_v2_1::startServer(int port, string ip, int backlog) {
                             // 将新 socket 放入下次 select 集合
                             //
                             acceptedTime[newConnSocket] = getCurrentTime();
-                            addConnectionNumber();
+                            addCurrentConnectionNumber();
                             info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
                             FD_SET(newConnSocket, &new_to_be_checked_fds);
                         }

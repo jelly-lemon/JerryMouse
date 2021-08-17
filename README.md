@@ -5,6 +5,7 @@ C++/面向对象/IO 多路复用/并发模型，Windows 平台下简单 web/http
 功能描述：
 
 能够响应客户端 HTTP GET 静态资源请求，比如 *.html，图片等。
+功能简单，不涉及数据库。
 
 技术概要：
 
@@ -13,8 +14,8 @@ C++/面向对象/IO 多路复用/并发模型，Windows 平台下简单 web/http
 - 命令行参数解析：自定义参数运行
 - 异步日志：生产者消费者模型，不阻塞主线程
 - 线程池：合理利用线程资源，使 CPU 利用率最大化
-- select/poll/epoll：IO 多路复用
-- IOCP：Windows 下真正的异步 IO 接口
+- select/poll/epoll：I/O 多路复用，I/O 密集型程序必用接口
+- IOCP：Windows 下真正的异步 I/O 接口
 - 并发模型：reactor、proactor
 
 # 更新日志
@@ -23,26 +24,33 @@ C++/面向对象/IO 多路复用/并发模型，Windows 平台下简单 web/http
 
 
 # 目录说明
+```
+--JerryMouse
+  |--include        头文件
+  |--web_root       web 根目录，也就是浏览器可访问的资源目录
+  |--v0_one_thread  单线程模型
+  |--v1_per_connection_per_thread   一个连接一个线程模型
+  |--v1_1_threadpool    线程池模型
+  |--v2_select_threadpoll   select + 线程池模型
+```
 
-
-
+    
 
 
 # 运行方法
 
+## 方法 1
 Windows/CLion/MinGW-64（我开发使用的工具链，推荐）：即在 Win 10 下，IDE 为 CLion，C++ 编译器为 MinGW-64。
 
 1. 下载和安装 CLion 和 MinGW-64
 
-   CLion 版本无所谓，但编译器版本一定要相同：mingw64-x86_64-8.1.0-release-posix-sjlj-rt_v6-rev0（注意关键字：x86_64、8.1.0、posix、sjlj）
+CLion 版本无所谓，但编译器版本一定要相同：mingw64-x86_64-8.1.0-release-posix-sjlj-rt_v6-rev0（注意关键字：x86_64、8.1.0、posix、sjlj）
 
-2. 使用 CLion/get from VCS 克隆项目
+2. 在 CLion 中配置 C++ 工具链 
+   
+即在 CLion 中配置 MinGW-64 路径。
 
-   前提是已经在本机上安装好了 Git。
-
-3. 在 CLion 中配置 C++ 工具链
-
-   即在 CLion 中配置 MinGW-64 路径。
+3. 使用 CLion/get from VCS 克隆本项目到你的电脑
 
 4. 选择目标运行
 
@@ -52,9 +60,7 @@ Windows/CLion/MinGW-64（我开发使用的工具链，推荐）：即在 Win 10
 
 ## 本机配置
 
-电脑配置
-
-操作系统：Windows 10 
+操作系统：Windows 10
 
 CPU：i7-7700 3.60GHz
 
@@ -64,9 +70,9 @@ CPU：i7-7700 3.60GHz
 
 
 
-虚拟机配置
+## 虚拟机配置
 
-操作系统：Centos7 
+操作系统：Centos7
 
 CPU：1 核
 
@@ -74,15 +80,17 @@ CPU：1 核
 
 
 
-测压软件
+## 测压软件
 
-Webbench 1.5
+Webbench 1.5 or ApacheBench 2.3
 
 
+## 测试 1
+在虚拟机中使用 Webbench 进行压力测试。
 
-## 对比对象
+### 对比对象
 
-对比实验使用 httpd-2.4.47-win64-VS16/Apache24/bin/httpd.exe 作为对比的对象。Apache HTTP Server 于1995年推出，自1996年4月以来，它一直是互联网上最流行的网络服务器。Apache HTTP Server 官网：https://httpd.apache.org/。
+对比实验使用 httpd-2.4.47-win64-VS16/Apache24/bin/httpd.exe 作为对比的对象（在 Windows 端运行）。Apache HTTP Server 于1995年推出，自1996年4月以来，它一直是互联网上最流行的网络服务器。Apache HTTP Server 官网：https://httpd.apache.org/。
 
 用于测试的网页：http://10.66.38.27/home.html （10.66.38.27 是我的局域网 IP），截图如下：
 
@@ -119,9 +127,9 @@ Webbench 对于一次 request 算 susceed 的情况：
 
 - request http://10.66.38.27/home.html ---> 服务端响应 ---> 服务端关闭 socket --->  Webbench 收到 ---> susceed
 
-  
 
- 一次 request 算 failed 的情况：
+
+一次 request 算 failed 的情况：
 
 - Webbench 创建 socket 失败 ---> failed
 
@@ -133,7 +141,7 @@ Webbench 对于一次 request 算 susceed 的情况：
 
 - Webbench 创建 socket ---> write ---> 关闭 socket 写操作 ---> read ---> close socket 失败 ---> failed
 
-  
+
 
 计算 QPS：
 
@@ -141,11 +149,11 @@ QPS(httpd.exe) = 3227 succeed / 5 sec = 645，即 QPS 约为 645。
 
 
 
-## 测试 JerryMouse
+### 测试 JerryMouse
 JerryMouse 对 HTTP 请求的处理：响应完毕后立即关闭连接。
 
 
-## v0_one_thread（单线程）
+#### v0_one_thread（单线程）
 
 (-c 为 250 时会出现 failed)
 
@@ -170,7 +178,7 @@ QPS = 2059 / 5 = 411
 
 
 
-## v1_per_connection_per_thread（一个连接开一个线程）
+#### v1_per_connection_per_thread（一个连接开一个线程）
 
 (-c 为 250 时会出现 failed)
 
@@ -195,7 +203,7 @@ QPS = 2447 / 5 = 489
 
 
 
-## v1_1_threadpool（线程池）
+#### v1_1_threadpool（线程池）
 
 ```shell
 [root@VM_1 WebBench]# ./webbench -c250 -t5 http://10.66.38.27/home.html
@@ -218,7 +226,7 @@ QPS = 2105 / 5 = 421
 
 
 
-## v2_select_threadpool
+#### v2_select_threadpool
 
 ```shell
 [root@VM_1 WebBench]# ./webbench -c200 -t5 http://10.66.38.27/home.html
@@ -239,13 +247,13 @@ Requests: 2014 susceed, 0 failed.
 
 QPS = 2014 / 5 = 402
 
-## v2_1_pool_threadpool
+#### v2_1_pool_threadpool
 
 
 
 
 
-## v2_2_reactor（单线程+select）
+#### v2_2_reactor（单线程+select）
 
 ```shell
 [root@VM_1 webbench-1.5]# ./webbench -c250 -t5 http://10.66.38.27/home.html
@@ -263,22 +271,35 @@ QPS = 3552 / 5 = 710
 
 
 
-## v3_epoll_threadpool
+#### v3_epoll_threadpool
 
 
 
-## v4_IOCP_threadpool
+#### v4_IOCP_threadpool
 
 
 
-## v4_1_acceptEx_IOCP_threadpool
+#### v4_1_acceptEx_IOCP_threadpool
 
 
 
-## v4_2_proactor
+#### v4_2_proactor
 
+## 测试 2
+使用 ab.exe 进行压力测试。
 
+测试参数：
+ab.exe -t20 -c100 http://127.0.0.1/home.html
 
+含义为：在 20s，并发用户数为 100，不断请求指定网页，最多累计访问 5w 次。
+
+### 测试 httpd.exe
+RQS = 8224
+
+### v0_one_thread（单线程）
+max RQS = 6311
+
+因为是单线程，并且没有使用 I/O 多路复用接口，所以一次只能处理一个 socket，所以并发用户数最大只能为 1。
 
 # 性能瓶颈分析
 可能存在的性能瓶颈：
@@ -303,8 +324,9 @@ CPU 利用率
 文件读写速度：
 
 # TODO
+- [ ] HttpConnection 封装
 
-- [ ] URL base64 解析
+- [ ] URL base64 解析，以支持中文
 
 
 

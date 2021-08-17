@@ -117,7 +117,7 @@ private:
                                 // 将新 socket 放入下次 select 集合
                                 //
                                 acceptedTime[newConnSocket] = getCurrentTime();
-                                addConnectionNumber();
+                                addCurrentConnectionNumber();
                                 info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
                                 FD_SET(newConnSocket, &new_to_be_checked_fds);
                             }
@@ -125,7 +125,7 @@ private:
                             //
                             // 如果是连接 socket，则表明有可读事件，提交任务
                             //
-                            function<void()> onTaskFinishedCallback = bind(&HttpServer::subConnectionNumber, this);
+                            function<void()> onTaskFinishedCallback = bind(&HttpServer::subCurrentConnectionNumber, this);
                             function<void()> task = bind(HttpResponse::HandleRequest, socket, acceptedTime[socket], onTaskFinishedCallback);
                             if (!threadPool.submitTask(task)) {
                                 info("[socket %s] submitTask failed, TaskQueue is full, close socket.\n",

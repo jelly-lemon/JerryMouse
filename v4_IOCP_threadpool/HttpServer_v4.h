@@ -68,7 +68,7 @@ public:
             if (dwIoSize == 0) {
                 info("[socket %s] client disconnected.\n", getSocketIPPort(pIoData->client).c_str());
                 closeSocket(pIoData->client);
-                pServer->subConnectionNumber();
+                pServer->subCurrentConnectionNumber();
                 delete pIoData;
                 continue;
             }
@@ -146,7 +146,7 @@ void HttpServer_v4::run() {
     while (1) {
         SOCKET client = accept(listenSocket, NULL, NULL);
         info("[socket %s] socket id %d, client connected\n", getSocketIPPort(client).c_str(), client)
-        addConnectionNumber();
+        addCurrentConnectionNumber();
 
         //
         // 将连接 socket 与完成端口绑定

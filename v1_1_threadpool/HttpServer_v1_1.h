@@ -33,13 +33,13 @@ private:
             SOCKET newConnSocket = accept(listenSocket, &connAddr, &addrLen);
             if (newConnSocket != SOCKET_ERROR) {
                 info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
-                addConnectionNumber();
-                addTotalRequest();
+                addCurrentConnectionNumber();
+                addTotalReceivedRequestNumber();
                 long acceptedTime = getCurrentTime();
                 //
                 // 提交任务
                 //
-                function<void()> onTaskFinishedCallback = bind(&HttpServer::subConnectionNumber, this);
+                function<void()> onTaskFinishedCallback = bind(&HttpServer::subCurrentConnectionNumber, this);
                 function<void()> task = bind(HttpResponse::HandleRequest, newConnSocket, acceptedTime, onTaskFinishedCallback);
                 pThreadPool->submitTask(task);
             } else {

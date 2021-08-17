@@ -42,7 +42,7 @@ public:
             SOCKET newConnSocket = accept(this->sock_fd, &connAddr, &addrLen);
             if (newConnSocket != SOCKET_ERROR) {
                 info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
-                httpServer.addConnectionNumber();
+                httpServer.addCurrentConnectionNumber();
                 subSpareNumber();
 
                 //
@@ -73,7 +73,7 @@ public:
     }
 
     void onConnectionClosed() {
-        httpServer.subConnectionNumber();
+        httpServer.subCurrentConnectionNumber();
         addSpareNumber();
     }
 

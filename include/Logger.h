@@ -411,7 +411,7 @@ string Logger::getCurrentTime() {
     // -----------------------------------
     time(&t);
     lt = localtime(&t);
-    string sTime = getFormattedStr("%d/%02d/%02d %02d:%02d:%02d", lt->tm_year + 1900, lt->tm_mon, lt->tm_mday,
+    string sTime = getFormattedStr("%d/%02d/%02d %02d:%02d:%02d", lt->tm_year + 1900, lt->tm_mon + 1, lt->tm_mday,
                     lt->tm_hour, lt->tm_min, lt->tm_sec);
     return sTime;
 }
