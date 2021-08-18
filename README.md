@@ -48,7 +48,7 @@ CLion 版本无所谓，但编译器版本一定要相同：mingw64-x86_64-8.1.0
 3. 使用 CLion/get from VCS 克隆本项目到你的电脑
 
 4. 选择目标运行
-
+![](https://github.com/jelly-lemon/JerryMouse/blob/master/img/select_target_to_run.png?raw=true)
 
 
 # 性能测试
@@ -104,22 +104,24 @@ RPS = 8224 （这是 ab.exe 给出的平均值，峰值应该还要再大几百�
 
 ### v0_one_thread（单线程）
 max RPS = 6311
+![](https://github.com/jelly-lemon/JerryMouse/blob/master/img/ab_v0.png?raw=true)
 
 因为是单线程，并且没有使用 I/O 多路复用接口，所以一次只能处理一个 socket，所以并发用户数最大只能为 1。
 
 ### v1_per_connection_per_thread
 max RPS = 6169 
+![](https://github.com/jelly-lemon/JerryMouse/blob/master/img/ab_v1.png?raw=true)
 
 比 v0_one_thread 低的原因：大量的线程切换。
 
 ### v1_1_threadpool
 max RPS = 6719
-
+![](https://github.com/jelly-lemon/JerryMouse/blob/master/img/ab_v1_1_threadpool.png?raw=true)
 比 v0_one_thread 高的原因：控制了线程数量，合理利用多核 CPU。
 
 ### v2_select_threadpool
 max RPS = 6311
-
+![](https://github.com/jelly-lemon/JerryMouse/blob/master/img/ab_v2_select.png?raw=true)
 和 v0_one_thread 性能相同、比 v1_1_threadpool 差的原因：使用了 threadpool 应该比单线程表现要好的，并且 v2_select_threadpool 
 还使用了 select 来遍历 socket。但是，在我们的实验中，所有 socket 都是建立连接后立即请求的，并且服务端响应一次后就立即关闭。
 换言之，所有 socket 都是就绪的，不存在需要等待的情况，I/O 多路复用就没有用。所以 select 并不会带来任何帮助，反而会降低表现性能。
@@ -157,9 +159,5 @@ max RPS = 6311
 因本人能力有限，并且可能存在一些知识误区，所以会出现很多问题。
 
 若你遇到问题或 Bug，欢迎提 issue；
-方法如下：
 
 若你想参与开发及优化代码，欢迎提 Pull Request。
-方法如下：
-
-我将及时做出回复。
