@@ -28,6 +28,7 @@ C++/面向对象/IO 多路复用/并发模型，Windows 平台下简单 web/http
   |--v1_per_connection_per_thread   一个连接一个线程模型
   |--v1_1_threadpool    线程池模型
   |--v2_select_threadpoll   select + 线程池模型
+  |--stat.xlsx      excel 表格，用于统计数据
 ```
 
 # 更新日志
@@ -48,6 +49,7 @@ CLion 版本无所谓，但编译器版本一定要相同：mingw64-x86_64-8.1.0
 3. 使用 CLion/get from VCS 克隆本项目到你的电脑
 
 4. 选择目标运行
+
 ![](https://github.com/jelly-lemon/JerryMouse/blob/master/img/select_target_to_run.png?raw=true)
 
 
