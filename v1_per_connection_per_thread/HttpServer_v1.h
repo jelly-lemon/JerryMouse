@@ -20,6 +20,8 @@ private:
             // 接收连接，启动处理线程
             //
             SOCKET newConnSocket = accept(listenSocket, &connAddr, &addrLen);
+            addCurrentConnectionNumber();
+            addTotalReceivedRequestNumber();
             info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
             long acceptedTime = getCurrentTime();
             thread t(worker_main, newConnSocket, acceptedTime, this);
@@ -59,6 +61,8 @@ void* HttpServer_v1::worker_main(SOCKET connSocket, long acceptedTime, HttpServe
         HttpResponse response(connSocket);
         response.handleRequest();
         closeSocket(connSocket);
+        pHttpServer->addTotalRespondedRequestNumber();
+        pHttpServer->subCurrentConnectionNumber();
     } catch(exception &e) {
         info(" handleRequest Err: %s\n", e.what());
     }

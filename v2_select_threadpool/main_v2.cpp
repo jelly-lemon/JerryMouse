@@ -10,7 +10,7 @@ int main() {
     Logger logger(true, true, true, true);  // 创建日志对象
 
     int port = 80;
-    string ip = "10.66.38.27";
+    string ip = "127.0.0.1";
 
 
     //

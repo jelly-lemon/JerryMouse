@@ -14,7 +14,7 @@ int main() {
     Logger logger(true, true, true, true);
 
     int port = 80;
-    string ip = "10.66.38.27";
+    string ip = "127.0.0.1";
 
 
     //

@@ -39,7 +39,7 @@ private:
                 //
                 // 提交任务
                 //
-                function<void()> onTaskFinishedCallback = bind(&HttpServer::subCurrentConnectionNumber, this);
+                function<void()> onTaskFinishedCallback = bind(&HttpServer_v1_1::onTaskFinished, this);
                 function<void()> task = bind(HttpResponse::HandleRequest, newConnSocket, acceptedTime, onTaskFinishedCallback);
                 pThreadPool->submitTask(task);
             } else {
@@ -47,6 +47,11 @@ private:
             }
 
         }
+    }
+
+    void onTaskFinished() {
+        subCurrentConnectionNumber();
+        addTotalRespondedRequestNumber();
     }
 
 
@@ -64,6 +69,8 @@ public:
     void setThreadPool(ThreadPool *pThreadPool) {
         this->pThreadPool = pThreadPool;
     }
+
+
 
 };
 

@@ -2,6 +2,7 @@
 
 
 #include <string>
+#include <functional>
 #include "CrossPlatform.h"
 #include "Logger.h"
 #include "util.h"
@@ -70,7 +71,7 @@ public:
      按秒统计请求数据
      */
     void recordStatisticInfoBySecond(){
-        unsigned int lastTotalReceivedRequestNumber = totalReceivedRequestNumber;
+//        unsigned int lastTotalReceivedRequestNumber = totalReceivedRequestNumber;
         unsigned int lastTotalRespondedRequestNumber = totalRespondedRequestNumber;
         ofstream file("./stat.txt", ios::out);
         if (file) {
@@ -79,16 +80,15 @@ public:
             info(" create ./stat.txt failed\n");
             return;
         }
-        file << "time\\title" << "\tconnection" << "\tRece_delta" << "\tResp_delta" << endl;
+        file << "time\\title" << "\tconnection" << "\tResponded_delta" << endl;
         while (1) {
             Sleep(1000);
             file << Logger::getCurrentTime();
             file << "\t" << currentConnectionNumber;
-            file << "\t" << totalReceivedRequestNumber - lastTotalReceivedRequestNumber;
             file << "\t" << totalRespondedRequestNumber - lastTotalRespondedRequestNumber;
             file << endl;
 
-            lastTotalReceivedRequestNumber = totalReceivedRequestNumber;
+//            lastTotalReceivedRequestNumber = totalReceivedRequestNumber;
             lastTotalRespondedRequestNumber = totalRespondedRequestNumber;
         }
     }

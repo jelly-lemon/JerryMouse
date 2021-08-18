@@ -125,7 +125,8 @@ private:
                             //
                             // 如果是连接 socket，则表明有可读事件，提交任务
                             //
-                            function<void()> onTaskFinishedCallback = bind(&HttpServer::subCurrentConnectionNumber, this);
+                            addTotalReceivedRequestNumber();
+                            function<void()> onTaskFinishedCallback = bind(&HttpServer_v2::onTaskFinished, this);
                             function<void()> task = bind(HttpResponse::HandleRequest, socket, acceptedTime[socket], onTaskFinishedCallback);
                             if (!threadPool.submitTask(task)) {
                                 info("[socket %s] submitTask failed, TaskQueue is full, close socket.\n",
@@ -153,6 +154,11 @@ private:
             to_be_checked_fds = new_to_be_checked_fds;
             FD_SET(listenSocket, &to_be_checked_fds);
         }
+    }
+
+    void onTaskFinished() {
+        subCurrentConnectionNumber();
+        addTotalRespondedRequestNumber();
     }
 
 public:

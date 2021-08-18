@@ -18,10 +18,6 @@ C++/面向对象/IO 多路复用/并发模型，Windows 平台下简单 web/http
 - IOCP：Windows 下真正的异步 I/O 接口
 - 并发模型：reactor、proactor
 
-# 更新日志
-
-
-
 
 # 目录说明
 ```
@@ -34,11 +30,10 @@ C++/面向对象/IO 多路复用/并发模型，Windows 平台下简单 web/http
   |--v2_select_threadpoll   select + 线程池模型
 ```
 
-    
+# 更新日志
 
 
 # 运行方法
-
 ## 方法 1
 Windows/CLion/MinGW-64（我开发使用的工具链，推荐）：即在 Win 10 下，IDE 为 CLion，C++ 编译器为 MinGW-64。
 
@@ -57,8 +52,20 @@ CLion 版本无所谓，但编译器版本一定要相同：mingw64-x86_64-8.1.0
 
 
 # 性能测试
+## 对比对象
+对比实验使用 httpd-2.4.47-win64-VS16/Apache24/bin/httpd.exe 作为对比的对象（在 Windows 端运行）。Apache HTTP Server 于1995年推出，自1996年4月以来，它一直是互联网上最流行的网络服务器。Apache HTTP Server 官网：https://httpd.apache.org/。
 
-## 本机配置
+用于测试的网页：http://10.66.38.27/home.html （10.66.38.27 是我的局域网 IP），截图如下：
+![](https://github.com/jelly-lemon/JerryMouse/blob/master/img/test_page.png?raw=true)
+
+## 测试 1
+在虚拟机中使用 Webbench 1.5 进行压力测试。
+
+整个测试过程为：首先，启动 httpd.exe；其次，打开虚拟机，运行 Centos7；最后，在 Centos7 中运行 Webbench，对 httpd.exe 进行压力测试。
+
+运行命令：./Webbench -c100 -t20 http://10.66.38.27/home.html
+
+### 本机配置
 
 操作系统：Windows 10
 
@@ -68,9 +75,7 @@ CPU：i7-7700 3.60GHz
 
 固态硬盘：Colorful SL300 120GB
 
-
-
-## 虚拟机配置
+虚拟机配置：
 
 操作系统：Centos7
 
@@ -78,228 +83,47 @@ CPU：1 核
 
 内存：1 G
 
+### 测试 httpd.exe
 
 
-## 测压软件
-
-Webbench 1.5 or ApacheBench 2.3
-
-
-## 测试 1
-在虚拟机中使用 Webbench 进行压力测试。
-
-### 对比对象
-
-对比实验使用 httpd-2.4.47-win64-VS16/Apache24/bin/httpd.exe 作为对比的对象（在 Windows 端运行）。Apache HTTP Server 于1995年推出，自1996年4月以来，它一直是互联网上最流行的网络服务器。Apache HTTP Server 官网：https://httpd.apache.org/。
-
-用于测试的网页：http://10.66.38.27/home.html （10.66.38.27 是我的局域网 IP），截图如下：
-
-实验假设：所有的 HTTP 请求在建立连接后会立即发送请求数据，不存在连接建立后不发送数据的情况。我们使用 WebBench 来保证这一点。
-
-![](https://github.com/jelly-lemon/JerryMouse/blob/master/img/test_page.png?raw=true)
-
-整个测试过程为：首先，启动 httpd.exe；其次，打开虚拟机，运行 Centos7；最后，在 Centos7 中运行 Webbench，对 httpd.exe 进行压力测试。
-
-测试结果：
-
-```shell
-[root@VM_1 WebBench]# ./webbench -c250 -t5 http://10.66.38.27/home.html
-Webbench - Simple Web Benchmark 1.5
-Copyright (c) Radim Kolar 1997-2004, GPL Open Source Software.
-
-Request:
-GET /home.html HTTP/1.0
-User-Agent: WebBench 1.5
-Host: 10.66.38.27
-
-
-Runing info: 250 clients, running 5 sec.
-
-Speed=38724 pages/min, 929376 bytes/sec.
-Requests: 3227 susceed, 0 failed.
-```
-
-其中 -c250 -t5 表示模拟 250 个客户端在 5s 内反复访问指定网页，可以理解成 250 个人分别用自己的电脑在浏览器中疯狂按 F5 刷新网页。（当我设置 300 个及以上客户端数量时，httpd.exe 就顶不住了，压测会出现 failed。）具体过程为，Webbench 保证同时有 250 个和服务端相连的 Http 连接。一旦一个 Http 连接完成，Webbench 立即又创建新的一个 Http 连接进行请求。若 250 个 Http 连接都没完成，那 Webbench 就一直等待。还需要注意的是，Webbench 创建一个 Http 连接后，只会 GET 请求一次，换言之，不会复用 Http 连接，每一次请求都会单独创建一个 Http 连接。
-
-
-
-Webbench 对于一次 request 算 susceed 的情况：
-
-- request http://10.66.38.27/home.html ---> 服务端响应 ---> 服务端关闭 socket --->  Webbench 收到 ---> susceed
-
-
-
-一次 request 算 failed 的情况：
-
-- Webbench 创建 socket 失败 ---> failed
-
-- Webbench 创建 socket ---> write 失败 ---> failed
-
-- Webbench 创建 socket ---> write ---> 关闭 socket 写操作失败 ---> failed
-
-- Webbench 创建 socket ---> write ---> 关闭 socket 写操作 ---> read 失败（服务端没有响应数据或者没有关闭 socket，导致 read 阻塞，最后超时） ---> failed
-
-- Webbench 创建 socket ---> write ---> 关闭 socket 写操作 ---> read ---> close socket 失败 ---> failed
-
-
-
-计算 QPS：
-
-QPS(httpd.exe) = 3227 succeed / 5 sec = 645，即 QPS 约为 645。
-
-
-
-### 测试 JerryMouse
-JerryMouse 对 HTTP 请求的处理：响应完毕后立即关闭连接。
-
-
-#### v0_one_thread（单线程）
-
-(-c 为 250 时会出现 failed)
-
-```shell
-[root@VM_1 WebBench]# ./webbench -c200 -t5 http://10.66.38.27/home.html
-Webbench - Simple Web Benchmark 1.5
-Copyright (c) Radim Kolar 1997-2004, GPL Open Source Software.
-
-Request:
-GET /home.html HTTP/1.0
-User-Agent: WebBench 1.5
-Host: 10.66.38.27
-
-
-Runing info: 200 clients, running 5 sec.
-
-Speed=24708 pages/min, 524378 bytes/sec.
-Requests: 2059 susceed, 0 failed.
-```
-
-QPS = 2059 / 5 = 411
-
-
-
-#### v1_per_connection_per_thread（一个连接开一个线程）
-
-(-c 为 250 时会出现 failed)
-
-```shell
-[root@VM_1 WebBench]# ./webbench -c200 -t5 http://10.66.38.27/home.html
-Webbench - Simple Web Benchmark 1.5
-Copyright (c) Radim Kolar 1997-2004, GPL Open Source Software.
-
-Request:
-GET /home.html HTTP/1.0
-User-Agent: WebBench 1.5
-Host: 10.66.38.27
-
-
-Runing info: 200 clients, running 5 sec.
-
-Speed=29364 pages/min, 622986 bytes/sec.
-Requests: 2447 susceed, 0 failed.
-```
-
-QPS = 2447 / 5 = 489
-
-
-
-#### v1_1_threadpool（线程池）
-
-```shell
-[root@VM_1 WebBench]# ./webbench -c250 -t5 http://10.66.38.27/home.html
-Webbench - Simple Web Benchmark 1.5
-Copyright (c) Radim Kolar 1997-2004, GPL Open Source Software.
-
-Request:
-GET /home.html HTTP/1.0
-User-Agent: WebBench 1.5
-Host: 10.66.38.27
-
-
-Runing info: 250 clients, running 5 sec.
-
-Speed=25260 pages/min, 536099 bytes/sec.
-Requests: 2105 susceed, 0 failed.
-```
-
-QPS = 2105 / 5 = 421
-
-
-
-#### v2_select_threadpool
-
-```shell
-[root@VM_1 WebBench]# ./webbench -c200 -t5 http://10.66.38.27/home.html
-Webbench - Simple Web Benchmark 1.5
-Copyright (c) Radim Kolar 1997-2004, GPL Open Source Software.
-
-Request:
-GET /home.html HTTP/1.0
-User-Agent: WebBench 1.5
-Host: 10.66.38.27
-
-
-Runing info: 200 clients, running 5 sec.
-
-Speed=24168 pages/min, 512912 bytes/sec.
-Requests: 2014 susceed, 0 failed.
-```
-
-QPS = 2014 / 5 = 402
-
-#### v2_1_pool_threadpool
-
-
-
-
-
-#### v2_2_reactor（单线程+select）
-
-```shell
-[root@VM_1 webbench-1.5]# ./webbench -c250 -t5 http://10.66.38.27/home.html
-Webbench - Simple Web Benchmark 1.5
-Copyright (c) Radim Kolar 1997-2004, GPL Open Source Software.
-
-Benchmarking: GET http://10.66.38.27/home.html
-250 clients, running 5 sec.
-
-Speed=42624 pages/min, 905049 bytes/sec.
-Requests: 3552 susceed, 0 failed.
-```
-
-QPS = 3552 / 5 = 710
-
-
-
-#### v3_epoll_threadpool
-
-
-
-#### v4_IOCP_threadpool
-
-
-
-#### v4_1_acceptEx_IOCP_threadpool
-
-
-
-#### v4_2_proactor
 
 ## 测试 2
-使用 ab.exe 进行压力测试。
+使用 ab.exe（ApacheBench 2.3） 进行压力测试。
 
 测试参数：
 ab.exe -t20 -c100 http://127.0.0.1/home.html
 
-含义为：在 20s，并发用户数为 100，不断请求指定网页，最多累计访问 5w 次。
+含义为：在 20s，并发用户数为 100，不断请求指定网页，最多累计访问 5w 次（本实验中，请求内容比较简单，所以在 20s 内能完成 5w 次）。
+
+### 本机配置
+同测试 1
 
 ### 测试 httpd.exe
-RQS = 8224
+RPS = 8224 （这是 ab.exe 给出的平均值，峰值应该还要再大几百）
+
 
 ### v0_one_thread（单线程）
-max RQS = 6311
+max RPS = 6311
 
 因为是单线程，并且没有使用 I/O 多路复用接口，所以一次只能处理一个 socket，所以并发用户数最大只能为 1。
+
+### v1_per_connection_per_thread
+max RPS = 6169 
+
+比 v0_one_thread 低的原因：大量的线程切换。
+
+### v1_1_threadpool
+max RPS = 6719
+
+比 v0_one_thread 高的原因：控制了线程数量，合理利用多核 CPU。
+
+### v2_select_threadpool
+max RPS = 6311
+
+和 v0_one_thread 性能相同、比 v1_1_threadpool 差的原因：使用了 threadpool 应该比单线程表现要好的，并且 v2_select_threadpool 
+还使用了 select 来遍历 socket。但是，在我们的实验中，所有 socket 都是建立连接后立即请求的，并且服务端响应一次后就立即关闭。
+换言之，所有 socket 都是就绪的，不存在需要等待的情况，I/O 多路复用就没有用。所以 select 并不会带来任何帮助，反而会降低表现性能。
+
 
 # 性能瓶颈分析
 可能存在的性能瓶颈：
@@ -313,20 +137,18 @@ max RQS = 6311
 - [ ] 频繁地线程切换
 
 ## 评估指标
-CPU 利用率
+- CPU 利用率
 
-线程切换次数（Context Switches）：
+- 线程切换次数（Context Switches）：
 
-缺页中断次数（Page Fault）：缺页中断越多，证明内存越不够用。
+- 缺页中断次数（Page Fault）：缺页中断越多，证明内存越不够用。
 
-下载上传网速：
+- 下载上传网速：
 
-文件读写速度：
+- 文件读写速度：
 
 # TODO
 - [ ] HttpConnection 封装
-
-- [ ] URL base64 解析，以支持中文
 
 
 

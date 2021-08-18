@@ -116,6 +116,8 @@ public:
                 // 关闭连接，服务端响应一个请求后就立即关闭 socket
                 //
                 closeSocket(pIoData->client);
+                pServer->subCurrentConnectionNumber();
+                pServer->addTotalRespondedRequestNumber();
                 delete pIoData;
                 continue;
             }
@@ -147,6 +149,7 @@ void HttpServer_v4::run() {
         SOCKET client = accept(listenSocket, NULL, NULL);
         info("[socket %s] socket id %d, client connected\n", getSocketIPPort(client).c_str(), client)
         addCurrentConnectionNumber();
+        addTotalReceivedRequestNumber();
 
         //
         // 将连接 socket 与完成端口绑定

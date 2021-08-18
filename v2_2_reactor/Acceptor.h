@@ -43,6 +43,7 @@ public:
             if (newConnSocket != SOCKET_ERROR) {
                 info("[socket %s] new socket %d\n", getSocketIPPort(newConnSocket).c_str(), newConnSocket);
                 httpServer.addCurrentConnectionNumber();
+                httpServer.addTotalReceivedRequestNumber();
                 subSpareNumber();
 
                 //
