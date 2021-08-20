@@ -1,4 +1,3 @@
-// 本文件实现了 IOCPHttpResponse 类
 #pragma once
 
 #include <winsock2.h>

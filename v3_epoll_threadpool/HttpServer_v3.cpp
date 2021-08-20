@@ -64,6 +64,11 @@ private:
         }
     }
 
+    /**
+     * 处理可写事件
+     *
+     * @param client
+     */
     void handleWrite(SOCKET client) {
 
     }
@@ -94,10 +99,17 @@ private:
             int client = accept(listenSocket, &clientAddr, &addrLen);
             if (client == -1) {
                 //
-                // EAGAIN:
-                // ECONNABORTED:
+                // EAGAIN: 数据还没准备好，请稍后再试
+                // ECONNABORTED: 软件引起的连接中止
+                // 当服务和客户进程在完成用于 TCP 连接的“三次握手”后，
+                // 客户 TCP 发送了一个 RST （复位）。在服务进程看来，
+                // 就在该连接已由 TCP 排队等着服务进程调用 accept 的时候，
+                // RST 却到达了。POSIX 规定此时的 error.code 值必须是 ECONNABORTED。
                 // EPROTO:
                 // EINTR:
+                // ECONNRESET：“connection reset by peer”，即“对方复位连接”
+                // ETIMEDOUT：“connect time out”，即“连接超时”
+                // EPIPE：“broken pipe”，即“管道破裂”
                 //
                 if (errno != EAGAIN && errno != ECONNABORTED && errno != EPROTO && errno != EINTR) {
                     err(" accept failed, Err: %s\n", getErrorInfo().c_str());
