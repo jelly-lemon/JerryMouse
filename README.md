@@ -28,6 +28,11 @@ C++/面向对象/IO 多路复用/并发模型，Windows 平台下简单 web/http
   |--v1_per_connection_per_thread   一个连接一个线程模型
   |--v1_1_threadpool    线程池模型
   |--v2_select_threadpoll   select + 线程池模型
+  |--v2_1_poll_threadpool   poll + 线程池
+  |--v2_2_reacotr           用 C++/面向对象实现 reacotr 模型
+  |--v3_epoll_threadpool    epoll + 线程池
+  |--v4_IOCP_threadpool     IOCP + 线程池
+  |--v4_2_proactor          用 IOCP 实现 proactor 模型
   |--stat.xlsx      excel 表格，用于统计数据
 ```
 
